@@ -7,7 +7,7 @@ WFLAGS=-Wall -Wextra -Wold-style-cast
 DEPS=ev3dev.h
 OBJ=ev3dev.o
 
-all:  $(OBJ)
+all:  $(OBJ) button-test
 
 %.o: %.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CXXFLAGS) $(WFLAGS)
