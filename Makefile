@@ -1,5 +1,5 @@
 
-ARCH=$(shell uname -m | grep arm && echo -march=armv5)
+ARCH=$(shell uname -m | grep -q arm && echo -march=armv5)
 OPT_MODE=$(shell if [[ "$(MODE)" = "Release" ]]; then echo "-O2 -DNDEBUG"; else echo "-g"; fi)
 
 CXXFLAGS=$(ARCH) -std=c++1y -D_GLIBCXX_USE_NANOSLEEP $(OPT_MODE)
