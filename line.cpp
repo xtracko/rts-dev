@@ -51,7 +51,7 @@ public:
     Controler() :
         m_sensor_color(INPUT_AUTO),
         m_motor_L(OUTPUT_A),
-        m_motor_R(OUTPUT_B)
+        m_motor_R(OUTPUT_D)
     {
         m_sensor_color.set_mode(color_sensor::mode_color);
     }
@@ -86,7 +86,7 @@ bool Controler::update() {
 
     Color color = static_cast<Color>(m_sensor_color.value());
 
-    //cout << "color: " << static_cast<int>(color) << endl;
+    cout << "\rcolor: " << static_cast<int>(color) << flush;
     switch (color) {
     case Color::black:
         break;
