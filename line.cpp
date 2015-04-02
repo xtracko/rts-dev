@@ -87,10 +87,27 @@ bool Controler::update() {
     Color color = static_cast<Color>(m_sensor_color.value());
 
     cout << "\rcolor: " << static_cast<int>(color) << flush;
+
+    m_motor_L.set_run_mode(motor::run_mode_forever);
+    m_motor_R.set_run_mode(motor::run_mode_forever);
+
+    m_motor_R.set_stop_mode(motor::stop_mode_hold);
+    m_motor_L.set_stop_mode(motor::stop_mode_hold);
+
+    m_motor_R.set_regulation_mode(motor::mode_on);
+    m_motor_L.set_regulation_mode(motor::mode_on);
+
+    m_motor_L.set_pulses_per_second_sp(80);
+    m_motor_R.set_pulses_per_second_sp(80);
+
     switch (color) {
     case Color::black:
+        m_motor_L.start();
+        m_motor_R.start();
         break;
     case Color::white:
+        m_motor_L.stop();
+        m_motor_R.stop();
         break;
     default:
         break;
