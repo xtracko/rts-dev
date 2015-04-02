@@ -14,17 +14,19 @@ using namespace std::literals::chrono_literals;
 
 
 ostream& operator<< (ostream& os, const ev3dev::sensor& dev) {
-    return os << "[conn: " << dev.connected()
-              << " port: " << dev.port_name()
-              << " mode: " << dev.mode()
-              << "]";
+    os << "[conn: " << dev.connected();
+    if ( dev.connected() )
+        os  << " port: " << dev.port_name()
+            << " mode: " << dev.mode();
+    return os << "]";
 }
 
 ostream& operator<< (ostream& os, const ev3dev::motor& dev) {
-    return os << "[conn: " << dev.connected()
-              << " port: " << dev.port_name()
-              << " type: " << dev.type()
-              << "]";
+    os << "[conn: " << dev.connected();
+    if ( dev.connected() )
+        os << " port: " << dev.port_name()
+           << " type: " << dev.type();
+    return os << "]";
 }
 
 
