@@ -64,6 +64,15 @@ public:
 
 
     void run_loop() {
+        m_motor_L.set_run_mode(motor::run_mode_forever);
+        m_motor_R.set_run_mode(motor::run_mode_forever);
+
+        m_motor_R.set_stop_mode(motor::stop_mode_hold);
+        m_motor_L.set_stop_mode(motor::stop_mode_hold);
+
+        m_motor_R.set_regulation_mode(motor::mode_on);
+        m_motor_L.set_regulation_mode(motor::mode_on);
+
         cout << "running..." << endl;
         while(update());
         cout << "exiting..." << endl;
@@ -76,6 +85,11 @@ private:
     ev3dev::color_sensor m_sensor_color;
     ev3dev::large_motor  m_motor_L;
     ev3dev::large_motor  m_motor_R;
+
+    int m_positionL = 0;
+    int m_positionR = 0;
+    int m_speedL = 80;
+    int m_speedR = 80;
 };
 
 
@@ -88,17 +102,25 @@ bool Controler::update() {
 
     cout << "\rcolor: " << static_cast<int>(color) << flush;
 
-    m_motor_L.set_run_mode(motor::run_mode_forever);
-    m_motor_R.set_run_mode(motor::run_mode_forever);
+    int posL = m_motor_L.position();
+    int posR = m_motor_R.position();
+    int rotL = posL - m_positionL;
+    int rotR = posR - m_positionR;
+    m_positionL = posL;
+    m_positionR = posR;
 
-    m_motor_R.set_stop_mode(motor::stop_mode_hold);
-    m_motor_L.set_stop_mode(motor::stop_mode_hold);
+    std::cout << "(" << rotL << ", " << rotR << ")" << std::endl;
+    if ( rotL > rotR ) {
+        ++m_speedR;
+        std::cout << "tweak R: " << m_speedR << std::endl;
+    } else if ( rotR > rotL ) {
+        ++m_speedL;
+        std::cout << "tweak L: " << m_speedL << std::endl;
+    }
 
-    m_motor_R.set_regulation_mode(motor::mode_on);
-    m_motor_L.set_regulation_mode(motor::mode_on);
+    m_motor_L.set_pulses_per_second_sp( m_speedL );
+    m_motor_R.set_pulses_per_second_sp( m_speedR );
 
-    m_motor_L.set_pulses_per_second_sp(80);
-    m_motor_R.set_pulses_per_second_sp(80);
 
     switch (color) {
     case Color::black:
