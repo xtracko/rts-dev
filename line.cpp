@@ -130,6 +130,33 @@ bool Controler::update() {
     case Color::white:
         m_motor_L.stop();
         m_motor_R.stop();
+
+        m_motor_L.set_pulses_per_second_sp( 200 );
+        m_motor_R.set_pulses_per_second_sp( 200 );
+
+        for ( auto time = 10ms; true; time += 10ms ) {
+            m_motor_R.set_polarity_mode( dc_motor::polarity_inverted );
+            m_motor_L.start();
+            m_motor_R.start();
+            std::this_thread::sleep_for( time );
+            m_motor_L.stop();
+            m_motor_R.stop();
+            m_motor_R.set_polarity_mode( dc_motor::polarity_normal );
+
+            if ( Color( m_sensor_color.value() ) == Color::black )
+                break;
+
+            m_motor_L.set_polarity_mode( dc_motor::polarity_inverted );
+            m_motor_L.start();
+            m_motor_R.start();
+            std::this_thread::sleep_for( time );
+            m_motor_L.stop();
+            m_motor_R.stop();
+            m_motor_L.set_polarity_mode( dc_motor::polarity_normal );
+
+            if ( Color( m_sensor_color.value() ) == Color::black )
+                break;
+        }
         break;
     default:
         break;
