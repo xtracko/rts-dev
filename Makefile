@@ -7,7 +7,7 @@ WFLAGS=-Wall -Wextra -Wold-style-cast
 DEPS=ev3dev.h
 OBJ=ev3dev.o
 
-all:  $(OBJ) button-test line
+all:  $(OBJ) bot
 
 %.o: %.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CXXFLAGS) $(WFLAGS)
@@ -15,16 +15,17 @@ all:  $(OBJ) button-test line
 ev3dev.o : ev3dev.cpp
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
-drive-test: $(OBJ) drive-test.o
-	$(CXX) -o $@ $^ $(CXXFLAGS)
-
-button-test: $(OBJ) button-test.o
-	$(CXX) -o $@ $^ $(CXXFLAGS)
-
 line: ${OBJ} line.o
 	$(CXX) -o $@ $^ $(CXXFLAGS)
+
+line2: ${OBJ} line2.o
+	$(CXX) -o $@ $^ $(CXXFLAGS)
+
+bot: ${OBJ} bot.o
+	$(CXX) -o $@ $^ $(CXXFLAGS)
+
 
 .PHONY: all clean
 
 clean:
-	rm -f *.o *~ ev3dev-lang-test ev3dev-lang-demo remote_control-test drive-test button-test line
+	rm -f bot.o bot

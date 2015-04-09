@@ -12,6 +12,18 @@ using namespace std::literals::chrono_literals;
 
 
 
+enum class Color : int {
+    none = 0,
+    black,
+    blue,
+    green,
+    yellow,
+    red,
+    white,
+    brown
+};
+
+
 
 ostream& operator<< (ostream& os, const ev3dev::sensor& dev) {
     os << "[conn: " << dev.connected();
@@ -31,152 +43,182 @@ ostream& operator<< (ostream& os, const ev3dev::motor& dev) {
 
 
 
-enum class Color : int {
-    none = 0,
-    black,
-    blue,
-    green,
-    yellow,
-    red,
-    white,
-    brown
+class DriveControl {
+    static constexpr const int _speed = 100;
+public:
+    bool check() const {
+        return _motor_L.connected() && _motor_R.connected();
+    }
+
+    void dump() const {
+        cout << "left  motor  " << _motor_L << endl;
+        cout << "right motor  " << _motor_R << endl;
+    }
+
+    void  init() {
+        _motor_L.reset();
+        _motor_R.reset();
+
+        _motor_L.set_stop_mode( motor::stop_mode_hold );
+        _motor_R.set_stop_mode( motor::stop_mode_hold );
+
+        _motor_L.set_regulation_mode( motor::mode_on );
+        _motor_R.set_regulation_mode( motor::mode_on );
+
+        _motor_L.set_pulses_per_second_sp( _speed );
+        _motor_R.set_pulses_per_second_sp( _speed );
+    }
+
+    void stop() {
+        _motor_L.stop();
+        _motor_R.stop();
+    }
+
+    void start() {
+        _motor_L.start();
+        _motor_R.start();
+    }
+public:
+    void forward() {
+        stop();
+        _motor_L.set_polarity_mode( dc_motor::polarity_normal );
+        _motor_R.set_polarity_mode( dc_motor::polarity_normal );
+
+        _motor_L.set_run_mode( motor::run_mode_forever );
+        _motor_R.set_run_mode( motor::run_mode_forever );
+        start();
+    }
+
+    void turn( int position ) {
+        stop();
+        _motor_L.set_polarity_mode( dc_motor::polarity_inverted );
+        _motor_R.set_polarity_mode( dc_motor::polarity_normal );
+
+        _motor_L.set_run_mode( motor::run_mode_position );
+        _motor_R.set_run_mode( motor::run_mode_position );
+
+        _motor_L.set_position_mode( motor::position_mode_relative );
+        _motor_R.set_position_mode( motor::position_mode_relative );
+
+        _motor_L.set_position_sp( position );
+        _motor_R.set_position_sp( position );
+        start();
+    }
+private:
+    large_motor  _motor_L = large_motor( OUTPUT_A );
+    large_motor  _motor_R = large_motor( OUTPUT_D );
+
+    int error_L = 0;
+    int error_R = 0;
 };
 
 
 
 
-class Controler
-{
+class Controler {
 public:
-    Controler() :
-        m_sensor_color(INPUT_AUTO),
-        m_motor_L(OUTPUT_A),
-        m_motor_R(OUTPUT_D)
-    {
-        m_sensor_color.set_mode(color_sensor::mode_color);
-    }
-public:
-    void dump_devices() const {
-        cout << "color sensor " << m_sensor_color << endl;
-        cout << "left motor   " << m_motor_L << endl;
-        cout << "right motor  " << m_motor_R << endl;
+    bool check() const {
+        return _sensor_color.connected() && _drive_control.check();
     }
 
+    void dump() const {
+        cout << "color sensor " << _sensor_color << endl;
+        _drive_control.dump();
+    }
 
-    void run_loop() {
-        m_motor_L.set_run_mode(motor::run_mode_forever);
-        m_motor_R.set_run_mode(motor::run_mode_forever);
-
-        m_motor_R.set_stop_mode(motor::stop_mode_hold);
-        m_motor_L.set_stop_mode(motor::stop_mode_hold);
-
-        m_motor_R.set_regulation_mode(motor::mode_on);
-        m_motor_L.set_regulation_mode(motor::mode_on);
+    void run() {
+        cout << "initializing..." << endl;
+        _sensor_color.set_mode( color_sensor::mode_color );
+        _drive_control.init();
 
         cout << "running..." << endl;
-        while(update());
+        while ( update() );
+
         cout << "exiting..." << endl;
+        _drive_control.stop();
+    }
+protected:
+    bool update() {
+        if ( button::enter.pressed() )
+            return false;
+
+        Color color = static_cast< Color >( _sensor_color.value() );
+        if (color != _state) {
+            _state = color;
+            cout << "\rstate: " << static_cast<int>(color);
+            cout.flush();
+            state_changed();
+        }
+        std::this_thread::sleep_for( 100ms );
+
+        return true;
     }
 
-    bool update();
-protected:
-    void turn(int angle);
+    void state_changed() {
+        switch ( _state ) {
+        case Color::black:
+            //_drive_control.forward();
+            break;
+        case Color::white:
+            _drive_control.turn( 15 );
+            break;
+        default:
+            break;
+        }
+    }
 private:
-    ev3dev::color_sensor m_sensor_color;
-    ev3dev::large_motor  m_motor_L;
-    ev3dev::large_motor  m_motor_R;
+    color_sensor _sensor_color = color_sensor( INPUT_AUTO );   
+    DriveControl _drive_control;
 
-    int m_positionL = 0;
-    int m_positionR = 0;
-    int m_speedL = 80;
-    int m_speedR = 80;
+    Color _state = Color::none;
 };
 
 
 
-bool Controler::update() {
-    if (button::enter.pressed())
-        return false;
+/*
+class CorrectDir {
+    using std::chrono::high_resolution_clock;
+public:
+    CorrectDir( Controler* bot ) :
+        _bot( bot ),
+        _position_L( _motor_L.position() )
+        _position_R( _motor_R.position() )
+    {}
+public:
+    void run() {
+        //time demanding task first
+        int pos_L = _motor_L.position();
+        int pos_R = _motor_R.position();
 
-    Color color = static_cast<Color>(m_sensor_color.value());
+        int rot_L = pos_L - _position_L;
+        int rot_R = pos_R - _position_R;
 
-    cout << "\rcolor: " << static_cast<int>(color) << flush;
+        _position_L = pos_L;
+        _position_R = pos_R;
 
-    int posL = m_motor_L.position();
-    int posR = m_motor_R.position();
-    int rotL = posL - m_positionL;
-    int rotR = posR - m_positionR;
-    m_positionL = posL;
-    m_positionR = posR;
 
-    std::cout << "(" << rotL << ", " << rotR << ")" << std::endl;
-    if ( rotL > rotR ) {
-        ++m_speedR;
-        std::cout << "tweak R: " << m_speedR << std::endl;
-    } else if ( rotR > rotL ) {
-        ++m_speedL;
-        std::cout << "tweak L: " << m_speedL << std::endl;
+        //now we can measure time
+        high_resolution_clock::now time_now;
+        high_resolution_clock::duration time_diff = time_now - _last_run;
+        _last_run = time_now;
+
+
+        //after that we adjust speed
+        time_diff
+
+        _bot->motor_L().set_pulses_per_second_sp( _speed_L );
+        _bot->motor_R().set_pulses_per_second_sp( _speed_R );
     }
+private:
+    Controler* const _bot;
 
-    m_motor_L.set_pulses_per_second_sp( m_speedL );
-    m_motor_R.set_pulses_per_second_sp( m_speedR );
+    constexpr int speed = 400;
+    int _position_L;
+    int _position_R;
 
-
-    switch (color) {
-    case Color::black:
-        m_motor_L.start();
-        m_motor_R.start();
-        break;
-    case Color::white:
-        m_motor_L.stop();
-        m_motor_R.stop();
-
-        m_motor_L.set_pulses_per_second_sp( 200 );
-        m_motor_R.set_pulses_per_second_sp( 200 );
-
-        for ( auto time = 10ms; true; time += 10ms ) {
-            m_motor_R.set_polarity_mode( dc_motor::polarity_inverted );
-            m_motor_L.start();
-            m_motor_R.start();
-            std::this_thread::sleep_for( time );
-            m_motor_L.stop();
-            m_motor_R.stop();
-            m_motor_R.set_polarity_mode( dc_motor::polarity_normal );
-
-            if ( Color( m_sensor_color.value() ) == Color::black )
-                break;
-
-            m_motor_L.set_polarity_mode( dc_motor::polarity_inverted );
-            m_motor_L.start();
-            m_motor_R.start();
-            std::this_thread::sleep_for( time );
-            m_motor_L.stop();
-            m_motor_R.stop();
-            m_motor_L.set_polarity_mode( dc_motor::polarity_normal );
-
-            if ( Color( m_sensor_color.value() ) == Color::black )
-                break;
-        }
-        break;
-    default:
-        break;
-    }
-
-    std::this_thread::sleep_for(100ms);
-    return true;
-}
-
-
-void Controler::turn(int angle) {
-    m_motor_R.set_run_mode(motor::run_mode_position);
-    m_motor_L.set_run_mode(motor::run_mode_position);
-
-    m_motor_R.set_stop_mode(motor::stop_mode_hold);
-    m_motor_L.set_stop_mode(motor::stop_mode_hold);
-
-    m_motor_R.set_regulation_mode(motor::mode_on);
-    m_motor_R.set_regulation_mode(motor::mode_on);
-}
+    high_resolution_clock::time_point _last_run;
+};
+*/
 
 
 
@@ -185,8 +227,14 @@ int main()
     cout << boolalpha;
 
     Controler bot;
-    bot.dump_devices();
-    bot.run_loop();
+
+    if ( !bot.check() ) {
+        cout << "miscount detected!" << endl;
+        bot.dump();
+
+        return 1;
+    }
+    bot.run();
 
     return 0;
 }
