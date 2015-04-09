@@ -36,14 +36,33 @@ public:
     void swap( SensorData& other ) {
         _colors.swap( other._colors );
         _positions.swap( other._positions );
+        std::swap( _polarity, other._polarity );
     }
 
     void swap_cols( std::vector< int >& colors ) {
         _colors.swap( colors );
     }
+
+    void print() const {
+        for ( auto x : _colors )
+            std::cout << x << ", ";
+        std::cout << std::endl;
+    }
+
+    const std::vector< int > &position() const { return _positions; }
+    const std::vector< int > &colors() const { return _colors; }
+
+    bool polarity() const { return _polarity; }
+    void inversePolarity( bool v ) {
+        if ( v )
+            _polarity = false;
+        else
+            _polarity = true;
+    }
 private:
     std::vector< int > _positions;
     std::vector< int > _colors;
+    bool _polarity = false;
 };
 
 
@@ -53,18 +72,61 @@ private:
 class SensorAnalyzer {
 public:
     void swap ( SensorData& data ) {
+        data.inversePolarity( _data.polarity() );
         _data.swap( data );
     }
 
-    void analyze() {
+    int analyze() {
         // discard unusable data
         if (_data.size() < 2)
-            return;
+            return 0;
+
+        const int size = _data.size();
+        int cval = 10, cpos = -1;
+        for ( int i = 0; i < size; ++i ) {
+            int p = std::abs( _data.pos( i ) );
+            if ( cval > p ) {
+                cval = p;
+                cpos = i;
+            }
+        }
+
+        // check if we got some weird distribution
+        if ( cpos < size / 4 || cpos > (size / 4) * 3 ) {
+            std::cout << "center = (" << cval << "," << cpos << ")" << std::endl;
+            return 0;
+        }
+
+//        _data.print();
 
         median_blur();
         gradient();
 
-        // TODO
+        int min = 0, max = 0, minpos = -1, maxpos = -1;
+        for ( int i = 0; i < size; ++i ) {
+            int v = _data.col( i );
+            if ( v < min ) {
+                min = v;
+                minpos = i;
+            }
+            if ( v > max ) {
+                max = v;
+                maxpos = i;
+            }
+        }
+
+        std::cout << "min = (" << min << "," << minpos << ") max = (" << max << "," << maxpos << ") center = (" << cval << "," << cpos << ") polarity = " << _data.polarity() << std::endl;
+
+        if ( (minpos < cpos && cpos < maxpos) || (minpos > cpos && cpos > maxpos) ) { // in black
+            int dmin = std::abs( minpos - cpos );
+            int dmax = std::abs( maxpos - cpos );
+            int diff = std::max( dmax, dmin ) * 20 / std::abs( minpos - maxpos );
+            int c = (_data.polarity() ? -1 : 1) * (dmin < dmax ? -1 : 1) * diff;
+            std::cout << "c = " << c << std::endl;
+            return c;
+        } else {
+        }
+        return 0;
     }
 protected:
     void median_blur() {
@@ -72,7 +134,7 @@ protected:
         std::array< int, 2*radius + 1 > neighbors;
 
         _temp.clear();
-        const int size = static_cast< int >(_data.size());
+        const int size = int(_data.size());
 
         for ( int i = 0; i < size; i++ ) {
             for ( int j = -radius; j <= radius; j++ ) {
@@ -191,6 +253,11 @@ public:
         _motor_L.start();
         _motor_R.start();
     }
+
+    void adjust( int i ) {
+        _motor_L.set_pulses_per_second_sp( speed - i );
+        _motor_R.set_pulses_per_second_sp( speed + i );
+    }
 protected:
     void init_modes() {
         _motor_L.reset();
@@ -227,6 +294,7 @@ public:
         _sensors.init();
         _drives.init();
 
+        _drives.forward();
         while ( update() );
 
         _drives.stop();
@@ -237,7 +305,7 @@ protected:
             return false;
 
         if ( _sensors.update( _analyzer ) ) {
-            _analyzer.analyze();
+            _drives.adjust( _analyzer.analyze() );
             // TODO
         }
 
