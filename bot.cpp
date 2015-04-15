@@ -3,14 +3,51 @@
 #include <vector>
 #include <array>
 #include <algorithm>
-
+#include <memory>
+#include <atomic>
+#include <csignal>
 
 using namespace ev3dev;
 
+std::atomic< bool > killFlag;
 
+// http://www.mstarlabs.com/apeng/techniques/pidsoftw.html
+struct PID {
+    PID( float gain, float ti, float td, float upd, float setpoint = 0 ) :
+        gain( gain ), ti( ti ), td( td ), upd( upd ), setpoint( setpoint ),
+        integral( 0 ), derivative( setpoint )
+    { }
 
+    float operator()( float in ) { return update( in ); }
 
+    float update( float in ) {
+        auto err = in - setpoint;
+        auto out = err;
 
+        out += integral * ti / upd;
+        integral += err;
+
+        out += (err - derivative) * td / upd;
+        derivative = err;
+
+        return - gain * out;
+    }
+
+  private:
+    // params
+    const float gain;
+    const float ti;
+    const float td;
+    const float upd;
+
+    const float setpoint;
+
+    // state
+    float integral;
+    float derivative;
+};
+
+std::unique_ptr< PID > linePID;
 
 class SensorData {
 public:
@@ -115,18 +152,18 @@ public:
             }
         }
 
-        std::cout << "min = (" << min << "," << minpos << ") max = (" << max << "," << maxpos << ") center = (" << cval << "," << cpos << ") polarity = " << _data.polarity() << std::endl;
+        if ( minpos == -1 || maxpos == -1 ) // lost :-/, just continue staright
+            return 0;
 
-        if ( (minpos < cpos && cpos < maxpos) || (minpos > cpos && cpos > maxpos) ) { // in black
-            int dmin = std::abs( minpos - cpos );
-            int dmax = std::abs( maxpos - cpos );
-            int diff = std::max( dmax, dmin ) * 20 / std::abs( minpos - maxpos );
-            int c = (_data.polarity() ? -1 : 1) * (dmin < dmax ? -1 : 1) * diff;
+        int blackCenter = (minpos + maxpos) / 2;
+        int diff = (cpos - blackCenter) * (_data.polarity() ? -1 : 1);
+
+        std::cout << "bc = " << blackCenter << " (" << minpos << ", " << maxpos << ") cp = " << cpos << " diff = " << diff << std::endl;
+
+        int c = linePID->update( diff );
+        if ( c )
             std::cout << "c = " << c << std::endl;
-            return c;
-        } else {
-        }
-        return 0;
+        return c;
     }
 protected:
     void median_blur() {
@@ -295,7 +332,7 @@ public:
         _drives.init();
 
         _drives.forward();
-        while ( update() );
+        while ( !killFlag && update() );
 
         _drives.stop();
     }
@@ -322,7 +359,17 @@ private:
 
 
 
-int main() {
+int main( int argc, char **argv ) {
+
+    if ( argc > 3 )
+        linePID.reset( new PID( std::stof( argv[ 1 ] ), std::stof( argv[ 2 ]) , std::stof( argv[ 3 ] ), 100, 0 ) );
+    else
+        linePID.reset( new PID( 1.5, 3, 15, 100, 0 ) );
+
+    // stop control loop on signal
+    killFlag = false;
+    std::signal( SIGINT, []( int ) { killFlag = true; } );
+
     MainControl bot;
 
     if ( !bot.check() )
