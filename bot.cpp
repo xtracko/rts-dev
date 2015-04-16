@@ -6,8 +6,12 @@
 #include <memory>
 #include <atomic>
 #include <csignal>
+#include <thread>
+#include <chrono>
+#include <cassert>
 
 using namespace ev3dev;
+using namespace std::literals::chrono_literals;
 
 std::atomic< bool > killFlag;
 
@@ -355,9 +359,35 @@ private:
     DriveControl  _drives;
 };
 
+struct KillSwitch {
 
+    KillSwitch() : _button( INPUT_4 ) { }
+    ~KillSwitch() {
+        if ( _thr.joinable() ) {
+            _thr.join();
+            _thr = std::thread();
+        }
+    }
 
+    void run() {
+        while ( !killFlag ) {
+            if ( _button.value() > 0 ) {
+                killFlag = true;
+                std::cout << "killed" << std::endl;
+            } else
+                std::this_thread::sleep_for( 100ms );
+        }
+    }
 
+    void spawn() {
+        assert( !_thr.joinable() );
+        _thr = std::thread( [&] { this->run(); } );
+    }
+
+  private:
+    ev3dev::touch_sensor _button;
+    std::thread _thr;
+};
 
 int main( int argc, char **argv ) {
 
@@ -371,10 +401,12 @@ int main( int argc, char **argv ) {
     std::signal( SIGINT, []( int ) { killFlag = true; } );
 
     MainControl bot;
+    KillSwitch killSwith;
 
     if ( !bot.check() )
         goto error;
 
+    killSwith.spawn();
     bot.run();
 
     return 0;
