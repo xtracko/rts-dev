@@ -24,6 +24,11 @@ line2: ${OBJ} line2.o
 bot: ${OBJ} bot.o
 	$(CXX) -o $@ $^ $(CXXFLAGS)
 
+test : buffer-test
+	./buffer-test
+
+buffer-test : buffer-test.cpp buffer.h
+	$(CXX) -o $@ $< $(CXXFLAGS)
 
 .PHONY: all clean
 
