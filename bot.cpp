@@ -159,8 +159,8 @@ public:
         if ( minpos == -1 || maxpos == -1 ) // lost :-/, just continue staright
             return 0;
 
-        int blackCenter = (minpos + maxpos) / 2;
-        int diff = (cpos - blackCenter) * (_data.polarity() ? -1 : 1);
+        int blackCenter = (_data.pos( minpos ) + _data.pos( maxpos )) / 2;
+        int diff = _data.pos( cpos ) - blackCenter;
 
         std::cout << "bc = " << blackCenter << " (" << minpos << ", " << maxpos << ") cp = " << cpos << " diff = " << diff << std::endl;
 
@@ -394,7 +394,7 @@ int main( int argc, char **argv ) {
     if ( argc > 3 )
         linePID.reset( new PID( std::stof( argv[ 1 ] ), std::stof( argv[ 2 ]) , std::stof( argv[ 3 ] ), 100, 0 ) );
     else
-        linePID.reset( new PID( 1.5, 3, 15, 100, 0 ) );
+        linePID.reset( new PID( -1, 10, 15, 100, 0 ) );
 
     // stop control loop on signal
     killFlag = false;
