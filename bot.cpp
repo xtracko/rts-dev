@@ -9,6 +9,7 @@
 #include <thread>
 #include <chrono>
 #include <cassert>
+#include "buffer.h"
 
 using namespace ev3dev;
 using namespace std::literals::chrono_literals;
@@ -53,57 +54,53 @@ struct PID {
 
 std::unique_ptr< PID > linePID;
 
-class SensorData {
-public:
-    void clear() {
-        _positions.clear();
-        _colors.clear();
-    }
+struct SensorData {
+    struct DataPoint {
+        DataPoint() = default;
+        DataPoint( int p, int c ) : position( p ), color( c ) { }
 
-    size_t size() const {
-        return _colors.size();
-    }
+        int position;
+        int color;
+    };
+
+    void clear() { _data.clear(); }
+
+    size_t size() const { return _data.size(); }
 
     void add( int position, int color ) {
-        _positions.push_back( position );
-        _colors.push_back( color );
+        _data.emplace_back( position, color );
     }
 
-    int col(const size_t i) const { return _colors[i]; }
-    int pos(const size_t i) const { return _positions[i]; }
+    int &col( size_t i ) { return _data[ i ].color; }
+    int col( size_t i ) const { return _data[ i ].color; }
+    int pos( size_t i ) const { return _data[ i ].position; }
 
-    int& col(const size_t i) { return _colors[i]; }
+    auto begin() { return _data.begin(); }
+    auto end() { return _data.end(); }
+
+    DataPoint operator[]( size_t i ) { return _data[ i ]; }
 
     void swap( SensorData& other ) {
-        _colors.swap( other._colors );
-        _positions.swap( other._positions );
-        std::swap( _polarity, other._polarity );
+        _data.swap( other._data );
     }
 
     void swap_cols( std::vector< int >& colors ) {
-        _colors.swap( colors );
+        assert( colors.size() == _data.size() );
+        auto dit = _data.begin();
+        auto cit = colors.begin();
+        const auto end = colors.end();
+        for ( ; cit < end; ++cit, ++dit )
+            dit->color = *cit;
     }
 
     void print() const {
-        for ( auto x : _colors )
-            std::cout << x << ", ";
+        for ( auto x : _data )
+            std::cout << x.color << ", ";
         std::cout << std::endl;
     }
 
-    const std::vector< int > &position() const { return _positions; }
-    const std::vector< int > &colors() const { return _colors; }
-
-    bool polarity() const { return _polarity; }
-    void inversePolarity( bool v ) {
-        if ( v )
-            _polarity = false;
-        else
-            _polarity = true;
-    }
 private:
-    std::vector< int > _positions;
-    std::vector< int > _colors;
-    bool _polarity = false;
+    std::vector< DataPoint > _data;
 };
 
 
@@ -112,55 +109,70 @@ private:
 
 class SensorAnalyzer {
 public:
-    void swap ( SensorData& data ) {
-        data.inversePolarity( _data.polarity() );
-        _data.swap( data );
+    SensorAnalyzer() : _dataBuf( 8 ) { }
+
+    void save( SensorData &&data ) {
+        _dataBuf.emplace_back( data );
     }
 
     int analyze() {
         // discard unusable data
-        if (_data.size() < 2)
+        if (data().size() < 2)
             return 0;
 
-        const int size = _data.size();
-        int cval = 10, cpos = -1;
+        const int size = data().size();
+        int cval = 10, cix = -1;
         for ( int i = 0; i < size; ++i ) {
-            int p = std::abs( _data.pos( i ) );
+            int p = std::abs( data().pos( i ) );
             if ( cval > p ) {
                 cval = p;
-                cpos = i;
+                cix = i;
             }
         }
 
         // check if we got some weird distribution
-        if ( cpos < size / 4 || cpos > (size / 4) * 3 ) {
-            std::cout << "center = (" << cval << "," << cpos << ")" << std::endl;
+        if ( cix < size / 4 || cix > (size / 4) * 3 ) {
+            std::cout << "center = (" << cval << "," << cix << ")" << std::endl;
+            // invalid data, get rid of them
+            _dataBuf.pop_back();
             return 0;
         }
 
-//        _data.print();
+        int cpos = data()[ cix ].position;
 
         median_blur();
         gradient();
 
-        int min = 0, max = 0, minpos = -1, maxpos = -1;
+        int min = 0, max = 0, minix = -1, maxix = -1;
         for ( int i = 0; i < size; ++i ) {
-            int v = _data.col( i );
+            int v = data().col( i );
             if ( v < min ) {
                 min = v;
-                minpos = i;
+                minix = i;
             }
             if ( v > max ) {
                 max = v;
-                maxpos = i;
+                maxix = i;
             }
         }
 
-        if ( minpos == -1 || maxpos == -1 ) // lost :-/, just continue staright
+        if ( minix == -1 || maxix == -1 ) { // lost :-/, just continue staright
+            // invalid data, get rid of them
+            _dataBuf.pop_back();
             return 0;
+        }
+        /* TODO: this could mean that we are on crossroad/angle
+         * we should look at history and analyze it:
+        for ( SensorData &x : reverseRange( _dataBuf ) ) { // iterate from oldest to data()
+        }
+        */
 
-        int blackCenter = (_data.pos( minpos ) + _data.pos( maxpos )) / 2;
-        int diff = _data.pos( cpos ) - blackCenter;
+
+        int minpos = data()[ minix ].position;
+        int maxpos = data()[ maxix ].position;
+
+        int blackCenter = (minpos + maxpos) / 2;
+        int diff = cpos - blackCenter;
 
         std::cout << "bc = " << blackCenter << " (" << minpos << ", " << maxpos << ") cp = " << cpos << " diff = " << diff << std::endl;
 
@@ -175,26 +187,29 @@ protected:
         std::array< int, 2*radius + 1 > neighbors;
 
         _temp.clear();
-        const int size = int(_data.size());
+        const int size = int(data().size());
 
         for ( int i = 0; i < size; i++ ) {
             for ( int j = -radius; j <= radius; j++ ) {
-                neighbors[ radius-j ] = ( i+j < 0 || i+j > size ) ? 0 : _data.col( i );
+                neighbors[ radius-j ] = ( i+j < 0 || i+j > size ) ? 0 : data().col( i );
             }
             std::sort( neighbors.begin(), neighbors.end() );
 
             _temp.push_back( neighbors[radius] );
         }
-        _data.swap_cols( _temp );
+        data().swap_cols( _temp );
     }
 
     void gradient() {
-        for ( size_t i = 0; i < _data.size() - 1; i++ )
-            _data.col( i ) = _data.col( i ) - _data.col( i+1 );
-        _data.col( _data.size() - 1 ) = 0;
+        for ( size_t i = 0; i < data().size() - 1; i++ )
+            data().col( i ) = data().col( i ) - data().col( i+1 );
+        data().col( data().size() - 1 ) = 0;
     }
+
+    SensorData &data() { return _dataBuf.front(); }
+
 private:
-    SensorData _data;
+    Buffer< SensorData > _dataBuf;
     std::vector< int > _temp;
 };
 
@@ -218,8 +233,8 @@ public:
         bool written = false;
 
         if ( update_motor() ) {
-            analyzer.swap( _data );
-            _data.clear();
+            analyzer.save( std::move( _data ) );
+            _data = SensorData(); // slightly safer then clean after move
 
             written = true;
         }
