@@ -1,0 +1,111 @@
+\documentclass[a4paper]{report}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{czech}
+\usepackage[cp1250]{inputenc}
+\usepackage[total={20cm,25cm},top=2.4cm,left=0.5cm,includefoot]{geometry}
+\usepackage{tikz}
+
+\def\abs#1{\left|#1\right|}
+\def\bb#1{{\mathbb #1}}
+\def\cal#1{{\mathcal #1}}
+\def\divs{\mathop |}
+\def\ee{{\rm e}}
+\def\eqq#1{\mathop{=}^{\rm (#1)}}
+\def\equival#1#2{\equiv #1\ (\mod \ #2)}
+\def\gen{\>|\>}
+\def\geqq#1{\mathop{\geq}^{\rm (#1)}}
+\def\grtt#1{\mathop{>}^{\rm (#1)}}
+\def\ii{{\rm i}}
+\def\inn#1{\mathop{\in}^{\rm (#1)}}
+\def\leqq#1{\mathop{\leq}^{\rm (#1)}}
+\def\less#1{\mathop{<}^{\rm (#1)}}
+\def\mod{\mathop{\rm mod} \nolimits}
+\def\min{\mathop{\rm min} \nolimits}
+\def\max{\mathop{\rm max} \nolimits}
+\def\inf{\mathop{\rm inf} \nolimits}
+\def\sup{\mathop{\rm sup} \nolimits}
+\def\uvv#1{\uv{#1}$\!$}
+
+
+\begin{document}
+\begin{titlepage}
+\begin{center}
+\begin{tikzpicture}
+
+\draw [black, fill=black] (-1.25, -9) rectangle (1.25, 9);
+\draw [very thin] (-9, -9)--(-9, 9);
+\draw [very thin] (-9, -9)--(9, -9);
+\draw [very thin] (-9, 9)--(9, 9);
+\draw [very thin] (9, -9)--(9, 9);
+
+\end{tikzpicture}
+\end{center}
+\end{titlepage}
+
+\begin{titlepage}
+\begin{center}
+\begin{tikzpicture}
+
+\draw [black, fill=black] (-1.25, -9) rectangle (1.25, 1.25);
+\draw [black, fill=black] (-1.25, -1.25) rectangle (9, 1.25);
+\draw [very thin] (-9, -9)--(-9, 9);
+\draw [very thin] (-9, -9)--(9, -9);
+\draw [very thin] (-9, 9)--(9, 9);
+\draw [very thin] (9, -9)--(9, 9);
+
+\end{tikzpicture}
+\end{center}
+\end{titlepage}
+
+\begin{titlepage}
+\begin{center}
+\begin{tikzpicture}
+
+\draw [black, fill=black] (-1.25, -9) rectangle (1.25, 9);
+\draw [black, fill=black] (-9, -1.25) rectangle (9, 1.25);
+\draw [very thin] (-9, -9)--(-9, 9);
+\draw [very thin] (-9, -9)--(9, -9);
+\draw [very thin] (-9, 9)--(9, 9);
+\draw [very thin] (9, -9)--(9, 9);
+
+\end{tikzpicture}
+\end{center}
+\end{titlepage}
+
+\begin{titlepage}
+\begin{center}
+\begin{tikzpicture}
+
+\draw [black, fill=black] (-1.25, -9) rectangle (1.25, -1.25);
+\draw [black, fill=black] (-1.25, 9) rectangle (1.25, 1.25);
+\draw [black, fill=black] (-9, -1.25) rectangle (-1.25, 1.25);
+\draw [black, fill=black] (9, 1.25) rectangle (1.25, -1.25);
+\draw [green, fill=green] (-1.25, -1.25) rectangle (1.25, 1.25);
+\draw [very thin] (-9, -9)--(-9, 9);
+\draw [very thin] (-9, -9)--(9, -9);
+\draw [very thin] (-9, 9)--(9, 9);
+\draw [very thin] (9, -9)--(9, 9);
+
+\end{tikzpicture}
+\end{center}
+\end{titlepage}
+
+\begin{titlepage}
+\begin{center}
+\begin{tikzpicture}
+
+\draw [black, fill=black] (-1.25, -9) rectangle (1.25, -1.25);
+\draw [black, fill=black] (-1.25, 9) rectangle (1.25, 1.25);
+\draw [black, fill=black] (-9, -1.25) rectangle (-1.25, 1.25);
+\draw [black, fill=black] (9, 1.25) rectangle (1.25, -1.25);
+\draw [green, fill=green] (-1.35, -1.35) rectangle (1.35, 1.35);
+\draw [very thin] (-9, -9)--(-9, 9);
+\draw [very thin] (-9, -9)--(9, -9);
+\draw [very thin] (-9, 9)--(9, 9);
+\draw [very thin] (9, -9)--(9, 9);
+
+\end{tikzpicture}
+\end{center}
+\end{titlepage}
+\end{document}
