@@ -60,7 +60,7 @@ struct SensorData {
         DataPoint( int p, int c ) : position( p ), color( c ) { }
 
         int position;
-        int color;
+        int color; // 1 - black, 6 - white
     };
 
     void clear() { _data.clear(); }
