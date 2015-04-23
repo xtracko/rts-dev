@@ -170,7 +170,7 @@ public:
             return 0;
         }
         /* TODO: this could mean that we are on crossroad/angle
-         * we should look at history and analyze it:*/
+         * we should look at history and analyze it:
         for ( SensorData &x : reverseRange( _dataBuf ) ) { // iterate from oldest to data()
             int i;
             for (i=1; i<x.size(); i++)
@@ -182,7 +182,7 @@ public:
                     else btw++;
                 }
             }
-        }
+        }*/
     
 
 
