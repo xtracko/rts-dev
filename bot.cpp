@@ -139,6 +139,14 @@ public:
         }
 
         int cpos = data()[ cix ].position;
+        
+        std::cout << "Color Position: " << std::endl;
+        for(int i = 0; i < data.size(); i++)
+        {
+            std::cout << data.col(i) << " " << data.pos(i) " " << std::endl;
+        }
+        
+        std::cout << std::endl << std::endl;
 
         median_blur();
         gradient();
@@ -162,10 +170,20 @@ public:
             return 0;
         }
         /* TODO: this could mean that we are on crossroad/angle
-         * we should look at history and analyze it:
+         * we should look at history and analyze it:*/
         for ( SensorData &x : reverseRange( _dataBuf ) ) { // iterate from oldest to data()
+            int i;
+            for (i=1; i<x.size(); i++)
+            {
+                int btw=0, wtb=0;
+                if (x.col(i))
+                {
+                    if (x.col(i)>0) wtb++;
+                    else btw++;
+                }
+            }
         }
-        */
+    
 
 
         int minpos = data()[ minix ].position;
@@ -201,9 +219,8 @@ protected:
     }
 
     void gradient() {
-        for ( size_t i = 0; i < data().size() - 1; i++ )
-            data().col( i ) = data().col( i ) - data().col( i+1 );
-        data().col( data().size() - 1 ) = 0;
+        for ( size_t i = data().size()-1; i > 0; i-- )
+            data().col( i ) -= data().col( i-1 );
     }
 
     SensorData &data() { return _dataBuf.front(); }
