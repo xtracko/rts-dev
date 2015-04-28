@@ -148,10 +148,91 @@ public:
         
         std::cout << std::endl << std::endl;
 
+        /*TODO: this could mean that we are on crossroad/angle
+        we should look at history and analyze it:*/
+        int whatsonline[8]={0};
+        /*
+        0 - straight line
+        1 - long line
+        2 - 2 lines
+        3 - 3 lines
+        4 - line on the left
+        5 - line on the right
+        */
+        int index=0;
+        for ( SensorData &x : reverseRange( _dataBuf ) ) { // iterate from oldest to data()
+            int leftmost=200, rightmost=200, longest=0, number=0;
+            int i;
+            int leftnow=200, blacknow=0, nonblacknow=0;
+            for (i=0; i<x.size(); i++)
+            {
+                if (leftnow!=200)
+                {
+                    if (x.col(i)==1)
+                    {
+                        rightmost = x.pos(i);
+                        nonblacknow = 0;
+                    }
+                    else
+                    {
+                        nonblacknow++;
+                        if (nonblacknow>2)
+                        {
+                            nonblacknow = 0;
+                            leftnow -= rightmost;
+                            leftnow = (leftnow>=0) ? leftnow : -leftnow;
+                            longest = (longest<leftnow) ? leftnow : longest;
+                            leftnow = 200;
+                            number++;
+                            continue;
+                        }
+                    }
+                }
+                else
+                {
+                    if (x.col(i)==1)
+                    {
+                        blacknow++;
+                        if (blacknow>2)
+                        {
+                            blacknow = 0;
+                            leftnow = x.pos(i-2);
+                            if (leftmost==200) leftmost = x.pos(i-2);
+                            rightmost = x.pos(i);
+                        }
+                    }
+                    else
+                    {
+                        blacknow = 0;
+                    }
+                }
+            }
+            if (leftnow!=200)
+            {
+                leftnow -= rightmost;
+                leftnow = (leftnow>=0) ? leftnow : -leftnow;
+                longest = (longest<leftnow) ? leftnow : longest;
+                number++;
+            }
+            if (x.pos(0)>x.pos(x.size() - 1))
+            {
+                i = leftmost;
+                leftmost = rightmost;
+                rightmost = i;
+            }
+            if (number>2) whatsonline[index] = 3;
+            else if (number > 1) whatsonline[index] = 2;
+            else if (leftmost<-30 && rightmost<0) whatsonline[index] = 4;
+            else if (leftmost>0 && rightmost>30) whatsonline[index] = 5;
+            else if (longest>40) whatsonline[index] = 1;
+            index++;
+        }
+
         median_blur();
         gradient();
 
         int min = 0, max = 0, minix = -1, maxix = -1;
+        
         for ( int i = 0; i < size; ++i ) {
             int v = data().col( i );
             if ( v < min ) {
@@ -169,20 +250,7 @@ public:
             _dataBuf.pop_back();
             return 0;
         }
-        /* TODO: this could mean that we are on crossroad/angle
-         * we should look at history and analyze it:
-        for ( SensorData &x : reverseRange( _dataBuf ) ) { // iterate from oldest to data()
-            int i;
-            for (i=1; i<x.size(); i++)
-            {
-                int btw=0, wtb=0;
-                if (x.col(i))
-                {
-                    if (x.col(i)>0) wtb++;
-                    else btw++;
-                }
-            }
-        }*/
+        
     
 
 
