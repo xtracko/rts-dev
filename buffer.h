@@ -68,11 +68,38 @@ struct Buffer {
         _data( static_cast< T * >( ::operator new( sizeof( T ) * _size ) ) )
     { }
 
+    Buffer( const Buffer &o ) :
+        _size( o._size ), _read( o._read ), _write( o._write ),
+        _data( static_cast< T * >( ::operator new( sizeof( T ) * _size ) ) )
+    {
+        std::copy( o.begin(), o.end(), begin() );
+    }
+
+    Buffer( Buffer &&o ) :
+        _size( o._size ), _read( o._read ), _write( o._write ), _data( o.data )
+    { // only operation alloved on o after this ctor is called is dtor
+        o._data = nullptr;
+    }
+
     ~Buffer() {
         clear();
     }
 
+    Buffer &operator=( Buffer o ) {
+        swap( o );
+    }
+
+    void swap( Buffer &o ) {
+        std::swap( _size, o._size );
+        std::swap( _read, o._read );
+        std::swap( _write, o._write );
+        std::swap( _data, o._data );
+    }
+
+
     void clear() {
+        if ( !_data )
+            return;
         for ( int i = _read; i != _write; i = _nxt( i ) )
             _data->~T();
         _read = _write = 0;
