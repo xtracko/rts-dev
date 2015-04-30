@@ -103,7 +103,10 @@ private:
     std::vector< DataPoint > _data;
 };
 
-
+int isBlack (int x)
+{
+    return (x==1);
+}
 
 
 
@@ -168,7 +171,7 @@ public:
             {
                 if (leftnow!=200)
                 {
-                    if (x.col(i)==1)
+                    if (isBlack(x.col(i)))
                     {
                         rightmost = x.pos(i);
                         nonblacknow = 0;
@@ -190,7 +193,7 @@ public:
                 }
                 else
                 {
-                    if (x.col(i)==1)
+                    if (isBlack(x.col(i)))
                     {
                         blacknow++;
                         if (blacknow>2)
