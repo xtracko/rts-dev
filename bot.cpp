@@ -115,7 +115,7 @@ public:
     SensorAnalyzer() : _dataBuf( 8 ) { }
 
     void save( SensorData &&data ) {
-        _dataBuf.emplace_back( data );
+        _dataBuf.emplace_back( std::move( data ) );
     }
 
     int analyze() {

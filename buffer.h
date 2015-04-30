@@ -64,8 +64,8 @@ struct Buffer {
     using const_reverse_iterator = std::reverse_iterator< const_iterator >;
 
     Buffer( int size ) :
-        _data( static_cast< T * >( ::operator new( sizeof( T ) * size ) ) ),
-        _size( size + 1 ), _read( 0 ), _write( 0 )
+        _size( size + 1 ), _read( 0 ), _write( 0 ),
+        _data( static_cast< T * >( ::operator new( sizeof( T ) * _size ) ) )
     { }
 
     ~Buffer() {
@@ -133,10 +133,10 @@ struct Buffer {
     const T &operator[]( int ix ) const { return _data[ _nxt( _read, ix ) ]; }
 
   private:
-    T *_data;
     const int _size;
     int _read;
     int _write;
+    T *_data;
 
     int _nxt( int x, int ix = 1 ) const {
         // this is weirt, but we need to make sure result is positive even if
