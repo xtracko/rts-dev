@@ -30,6 +30,9 @@ test : buffer-test
 buffer-test : buffer-test.cpp buffer.h
 	$(CXX) -o $@ $< $(CXXFLAGS)
 
+job-test : job-test.cpp job.h
+	$(CXX) -o $@ $< $(CXXFLAGS)
+
 .PHONY: all clean
 
 clean:
