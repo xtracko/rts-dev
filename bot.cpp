@@ -144,9 +144,9 @@ public:
         int cpos = data()[ cix ].position;
         
         std::cout << "Color Position: " << std::endl;
-        for(int i = 0; i < data.size(); i++)
+        for(int i = 0; i < data().size(); i++)
         {
-            std::cout << data.col(i) << " " << data.pos(i) " " << std::endl;
+            std::cout << data().col(i) << " " << data().pos(i) << " " << std::endl;
         }
         
         std::cout << std::endl << std::endl;
