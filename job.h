@@ -12,7 +12,8 @@ using Guard = std::unique_lock< std::mutex >;
 template< typename T >
 struct GuardedVar {
 
-    GuardedVar() {
+    template< typename... Args >
+    GuardedVar( Args &&...args ) : value( std::forward< Args >( args )... ) {
         ready = false;
         canceled = false;
     }
@@ -30,6 +31,12 @@ struct GuardedVar {
 
     // wait for value to be unguarded and assign it
     void assign( T &val ) {
+        auto g = protect();
+        _assign( val );
+    }
+
+    // a version which accepts rvalues
+    void assign( T &&val ) {
         auto g = protect();
         _assign( val );
     }

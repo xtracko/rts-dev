@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cassert>
 #include "buffer.h"
+#include "job.h"
 
 using namespace ev3dev;
 using namespace std::literals::chrono_literals;
@@ -106,48 +107,21 @@ int isBlack (int x)
     return (x==1);
 }
 
+struct CrossroadAnalyzer {
 
+    CrossroadAnalyzer() : data( 8 ) { }
 
-class SensorAnalyzer {
-public:
-    SensorAnalyzer() : _dataBuf( 8 ), _linePid( -1, 10, 15, 100, 0 ) { }
-
-    void save( SensorData &&data ) {
-        _dataBuf.emplace_back( std::move( data ) );
+    void run() {
+        while ( !killFlag ) {
+            data.waitAndReadOnce( [&]( Buffer< SensorData > &sensorData ) {
+                    process( sensorData );
+                } );
+        }
     }
 
-    int analyze() {
-        // discard unusable data
-        if (data().size() < 2)
-            return 0;
-
-        const int size = data().size();
-        int cval = 10, cix = -1;
-        for ( int i = 0; i < size; ++i ) {
-            int p = std::abs( data().pos( i ) );
-            if ( cval > p ) {
-                cval = p;
-                cix = i;
-            }
-        }
-
-        // check if we got some weird distribution
-        if ( cix < size / 4 || cix > (size / 4) * 3 ) {
-            std::cout << "center = (" << cval << "," << cix << ")" << std::endl;
-            // invalid data, get rid of them
-            _dataBuf.pop_back();
-            return 0;
-        }
-
-        int cpos = data()[ cix ].position;
-        
-        std::cout << "Color Position: " << std::endl;
-        for(int i = 0; i < int(data().size()); i++)
-        {
-            std::cout << data().col(i) << " " << data().pos(i) << " " << std::endl;
-        }
-        
-        std::cout << std::endl << std::endl;
+    // this function will be called every time data are avalibale, it should
+    // produce result into result variable, it shoud not access data variable
+    void process( Buffer< SensorData > &sensorData ) {
 
         /*TODO: this could mean that we are on crossroad/angle
         we should look at history and analyze it:*/
@@ -161,7 +135,7 @@ public:
         5 - line on the right
         */
         int index=0;
-        for ( SensorData &x : reverseRange( _dataBuf ) ) { // iterate from oldest to data()
+        for ( SensorData &x : reverseRange( sensorData ) ) { // iterate from oldest to data()
             int leftmost=200, rightmost=200, longest=0, number=0;
             int i;
             int leftnow=200, blacknow=0, nonblacknow=0;
@@ -229,11 +203,72 @@ public:
             index++;
         }
 
+        result.assign( 42 /* pass result back to main thread */ );
+    }
+
+    job::GuardedVar< Buffer< SensorData > > data;
+    job::GuardedVar< int > result; // or watever data type is needed here
+};
+
+
+class SensorAnalyzer {
+public:
+    SensorAnalyzer( CrossroadAnalyzer &ca ) :
+        _dataBuf( 8 ), _linePid( -1, 10, 15, 100, 0 ), crossroadAnalyzer( ca )
+    { }
+
+    void save( SensorData &&data ) {
+        _dataBuf.emplace_back( std::move( data ) );
+    }
+
+    int analyze() {
+        // discard unusable data
+        if (data().size() < 2)
+            return 0;
+
+        const int size = data().size();
+        int cval = 10, cix = -1;
+        for ( int i = 0; i < size; ++i ) {
+            int p = std::abs( data().pos( i ) );
+            if ( cval > p ) {
+                cval = p;
+                cix = i;
+            }
+        }
+
+        // check if we got some weird distribution
+        if ( cix < size / 4 || cix > (size / 4) * 3 ) {
+            std::cout << "center = (" << cval << "," << cix << ")" << std::endl;
+            // invalid data, get rid of them
+            _dataBuf.pop_back();
+            return 0;
+        }
+
+        int cpos = data()[ cix ].position;
+        
+        std::cout << "Color Position: " << std::endl;
+        for(int i = 0; i < int(data().size()); i++)
+        {
+            std::cout << data().col(i) << " " << data().pos(i) << " " << std::endl;
+        }
+        
+        std::cout << std::endl << std::endl;
+
+        // if CrossroadAnalyzer is not working already get it running (otherwise
+        // do nothing with it)
+        crossroadAnalyzer.data.tryAssign( _dataBuf );
+        // try to get result from (which was not yet processed) CrossroadAnalyzer
+        auto res = crossroadAnalyzer.result.tryCopyOut();
+        if ( res.first ) { // we got resuts
+
+            // TODO: put crossroad driving code here (and maybe skip next part in that case)
+        }
+
         median_blur();
         gradient();
 
         int min = 0, max = 0, minix = -1, maxix = -1;
-        
+
         for ( int i = 0; i < size; ++i ) {
             int v = data().col( i );
             if ( v < min ) {
@@ -251,9 +286,6 @@ public:
             _dataBuf.pop_back();
             return 0;
         }
-        
-    
-
 
         int minpos = data()[ minix ].position;
         int maxpos = data()[ maxix ].position;
@@ -298,6 +330,7 @@ private:
     Buffer< SensorData > _dataBuf;
     std::vector< int > _temp;
     PID _linePid;
+    CrossroadAnalyzer &crossroadAnalyzer;
 };
 
 
@@ -429,6 +462,9 @@ private:
 
 class MainControl {
 public:
+
+    MainControl() : _analyzer( _crossroadAnalyzer ) { }
+
     bool check() {
         return _sensors.check() && _drives.check();
     }
@@ -437,9 +473,14 @@ public:
         _sensors.init();
         _drives.init();
 
+        _crossroatThread = std::thread( [&] { _crossroadAnalyzer.run(); } );
+
         _drives.forward();
         while ( !killFlag && update() );
 
+        _crossroadAnalyzer.data.cancelWaits();
+        _crossroadAnalyzer.result.cancelWaits();
+        _crossroatThread.join();
         _drives.stop();
     }
 protected:
@@ -456,6 +497,8 @@ protected:
     }
 private:
     SensorAnalyzer _analyzer;
+    CrossroadAnalyzer _crossroadAnalyzer;
+    std::thread _crossroatThread;
 
     SensorControl _sensors;
     DriveControl  _drives;
