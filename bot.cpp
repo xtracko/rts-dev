@@ -52,8 +52,6 @@ struct PID {
     float derivative;
 };
 
-std::unique_ptr< PID > linePID;
-
 struct SensorData {
     struct DataPoint {
         DataPoint() = default;
@@ -112,7 +110,7 @@ int isBlack (int x)
 
 class SensorAnalyzer {
 public:
-    SensorAnalyzer() : _dataBuf( 8 ) { }
+    SensorAnalyzer() : _dataBuf( 8 ), _linePid( -1, 10, 15, 100, 0 ) { }
 
     void save( SensorData &&data ) {
         _dataBuf.emplace_back( std::move( data ) );
@@ -144,7 +142,7 @@ public:
         int cpos = data()[ cix ].position;
         
         std::cout << "Color Position: " << std::endl;
-        for(int i = 0; i < data().size(); i++)
+        for(int i = 0; i < int(data().size()); i++)
         {
             std::cout << data().col(i) << " " << data().pos(i) << " " << std::endl;
         }
@@ -167,7 +165,7 @@ public:
             int leftmost=200, rightmost=200, longest=0, number=0;
             int i;
             int leftnow=200, blacknow=0, nonblacknow=0;
-            for (i=0; i<x.size(); i++)
+            for (i=0; i < int(x.size()); i++)
             {
                 if (leftnow!=200)
                 {
@@ -265,7 +263,7 @@ public:
 
         std::cout << "bc = " << blackCenter << " (" << minpos << ", " << maxpos << ") cp = " << cpos << " diff = " << diff << std::endl;
 
-        int c = linePID->update( diff );
+        int c = _linePid.update( diff );
         if ( c )
             std::cout << "c = " << c << std::endl;
         return c;
@@ -299,6 +297,7 @@ protected:
 private:
     Buffer< SensorData > _dataBuf;
     std::vector< int > _temp;
+    PID _linePid;
 };
 
 
@@ -492,12 +491,7 @@ struct KillSwitch {
     std::thread _thr;
 };
 
-int main( int argc, char **argv ) {
-
-    if ( argc > 3 )
-        linePID.reset( new PID( std::stof( argv[ 1 ] ), std::stof( argv[ 2 ]) , std::stof( argv[ 3 ] ), 100, 0 ) );
-    else
-        linePID.reset( new PID( -1, 10, 15, 100, 0 ) );
+int main() {
 
     // stop control loop on signal
     killFlag = false;
