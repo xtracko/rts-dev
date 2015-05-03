@@ -85,17 +85,32 @@ struct Buffer {
         clear();
     }
 
-    Buffer &operator=( Buffer o ) {
-        swap( o );
+    Buffer &operator=( const Buffer &o ) {
+        if ( &o == this )
+            return *this;
+
+        assert( _size == o._size );
+        assert( _data );
+
+        // drop old data
+        clear();
+
+        // insert new
+        for ( auto &x : o )
+            emplace_back( x );
+        return *this;
     }
 
-    void swap( Buffer &o ) {
-        std::swap( _size, o._size );
+    Buffer &operator=( Buffer &&o ) {
+        if ( &o == this )
+            return *this;
+
+        assert( _size == o._size );
         std::swap( _read, o._read );
         std::swap( _write, o._write );
         std::swap( _data, o._data );
+        return *this;
     }
-
 
     void clear() {
         if ( !_data )
