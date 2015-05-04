@@ -223,13 +223,13 @@ public:
 
     int analyze() {
         // discard unusable data
-        if (data().size() < 2)
+        if (rawData().size() < 2)
             return 0;
 
-        const int size = data().size();
+        const int size = rawData().size();
         int cval = 10, cix = -1;
         for ( int i = 0; i < size; ++i ) {
-            int p = std::abs( data().pos( i ) );
+            int p = std::abs( rawData().pos( i ) );
             if ( cval > p ) {
                 cval = p;
                 cix = i;
@@ -244,12 +244,12 @@ public:
             return 0;
         }
 
-        int cpos = data()[ cix ].position;
+        int cpos = rawData()[ cix ].position;
         
         std::cout << "Color Position: " << std::endl;
-        for(int i = 0; i < int(data().size()); i++)
+        for(int i = 0; i < int(rawData().size()); i++)
         {
-            std::cout << data().col(i) << " " << data().pos(i) << " " << std::endl;
+            std::cout << rawData().col(i) << " " << rawData().pos(i) << " " << std::endl;
         }
         
         std::cout << std::endl << std::endl;
