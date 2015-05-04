@@ -304,7 +304,7 @@ protected:
 
     // create data() from rawData()
     void median_blur() {
-        const int radius = 1;
+        const int radius = 2;
         std::array< int, 2*radius + 1 > neighbors;
 
         data().clear();
