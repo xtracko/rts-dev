@@ -479,14 +479,14 @@ public:
         _sensors.init();
         _drives.init();
 
-        _crossroatThread = std::thread( [&] { _crossroadAnalyzer.run(); } );
+        _corssroadThread = std::thread( [&] { _crossroadAnalyzer.run(); } );
 
         _drives.forward();
         while ( !killFlag && update() );
 
         _crossroadAnalyzer.data.cancelWaits();
         _crossroadAnalyzer.result.cancelWaits();
-        _crossroatThread.join();
+        _corssroadThread.join();
         _drives.stop();
     }
 protected:
@@ -504,7 +504,7 @@ protected:
 private:
     SensorAnalyzer _analyzer;
     CrossroadAnalyzer _crossroadAnalyzer;
-    std::thread _crossroatThread;
+    std::thread _corssroadThread;
 
     SensorControl _sensors;
     DriveControl  _drives;
