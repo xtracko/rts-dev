@@ -301,22 +301,23 @@ public:
         return c;
     }
 protected:
+
+    // create data() from rawData()
     void median_blur() {
         const int radius = 1;
         std::array< int, 2*radius + 1 > neighbors;
 
-        _temp.clear();
-        const int size = int(data().size());
+        data().clear();
+        const int size = int(rawData().size());
 
         for ( int i = 0; i < size; i++ ) {
             for ( int j = -radius; j <= radius; j++ ) {
-                neighbors[ radius-j ] = ( i+j < 0 || i+j > size ) ? 0 : data().col( i );
+                neighbors[ radius-j ] = ( i+j < 0 || i+j > size ) ? 0 : rawData().col( i );
             }
             std::sort( neighbors.begin(), neighbors.end() );
 
-            _temp.push_back( neighbors[radius] );
+            data().add( rawData().pos( i ), neighbors[radius] );
         }
-        data().swap_cols( _temp );
     }
 
     void gradient() {
@@ -324,11 +325,12 @@ protected:
             data().col( i ) -= data().col( i-1 );
     }
 
-    SensorData &data() { return _dataBuf.front(); }
+    SensorData &rawData() { return _dataBuf.front(); }
+    SensorData &data() { return _data; }
 
 private:
     Buffer< SensorData > _dataBuf;
-    std::vector< int > _temp;
+    SensorData _data;
     PID _linePid;
     CrossroadAnalyzer &crossroadAnalyzer;
 };
