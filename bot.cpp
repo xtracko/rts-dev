@@ -360,13 +360,17 @@ public:
 
             written = true;
         }
-        _data.add( _motor.position(), _eye.value() );
+
+        const int intensity = _eye.value(0) + _eye.value(1) + _eye.value(2);
+        const int is_black = (intensity < 382) ? 1 : 0;
+
+        _data.add( _motor.position(), is_black );
 
         return written;
     }
 protected:
     void init_modes() {
-        _eye.set_mode( color_sensor::mode_color );
+        _eye.set_mode( "RGB-RAW" );
 
         _motor.reset();
         _motor.set_run_mode( motor::run_mode_position );
