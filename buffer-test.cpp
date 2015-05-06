@@ -3,14 +3,14 @@
 int main() {
     Buffer< int > buf( 16 );
     for ( int i = 0; i < 16; ++i ) {
-        buf.emplace_back( i );
+        buf.push_back( i );
         assert( buf.size() == i + 1 );
     }
     for ( int i = 0; i < 16; ++i )
         assert( buf[ i ] == i );
 
     for ( int i = 16; i < 64; ++i ) {
-        buf.emplace_back( i );
+        buf.push_back( i );
         assert( buf.size() == 16 );
     }
 
@@ -25,7 +25,7 @@ int main() {
     }
 
     for ( int i = 0; i < 8; ++i )
-        buf.emplace_back( i );
+        buf.push_back( i );
 
     for ( int i = 0; i < 8; ++i )
         assert( buf[ i ] == 56 + i );
@@ -47,7 +47,7 @@ int main() {
     }
 
     for ( int i = 8; i < 24; ++i ) {
-        buf.emplace_back( i );
+        buf.push_back( i );
         assert( buf.size() == std::min( i + 1, 16 ) );
     }
 

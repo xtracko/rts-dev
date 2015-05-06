@@ -21,12 +21,13 @@ auto reverseRange( Col &col ) {
 
 template< typename T >
 struct Buffer {
+    using value_type = T;
 
     template< typename SelfPtr, typename ValRef >
     struct Iterator : std::iterator< std::bidirectional_iterator_tag, T > {
         Iterator( SelfPtr self, int ix ) : _self( self ), _ix( ix ) { }
 
-        ValRef operator *() { return _self->_data[ _ix ]; }
+        ValRef operator *() { return _self->_data.get()[ _ix ]; }
 
         Iterator &operator++() {
             _ix = _self->_nxt( _ix );
@@ -65,24 +66,17 @@ struct Buffer {
 
     Buffer( int size ) :
         _size( size + 1 ), _read( 0 ), _write( 0 ),
-        _data( static_cast< T * >( ::operator new( sizeof( T ) * _size ) ) )
+        _data( new T[ _size ] )
     { }
 
-    Buffer( const Buffer &o ) :
-        _size( o._size ), _read( o._read ), _write( o._write ),
-        _data( static_cast< T * >( ::operator new( sizeof( T ) * _size ) ) )
-    {
-        std::copy( o.begin(), o.end(), begin() );
+    Buffer( const Buffer &o ) : Buffer( o._size ) {
+        std::copy( o.begin(), o.end(), std::back_inserter( *this ) );
     }
 
     Buffer( Buffer &&o ) :
         _size( o._size ), _read( o._read ), _write( o._write ), _data( o.data )
     { // only operation alloved on o after this ctor is called is dtor
         o._data = nullptr;
-    }
-
-    ~Buffer() {
-        clear();
     }
 
     Buffer &operator=( const Buffer &o ) {
@@ -92,12 +86,8 @@ struct Buffer {
         assert( _size == o._size );
         assert( _data );
 
-        // drop old data
-        clear();
-
         // insert new
-        for ( auto &x : o )
-            emplace_back( x );
+        std::copy( o.begin(), o.end(), std::back_inserter( *this ) );
         return *this;
     }
 
@@ -112,45 +102,40 @@ struct Buffer {
         return *this;
     }
 
-    void clear() {
-        if ( !_data )
-            return;
-        for ( int i = _read; i != _write; i = _nxt( i ) )
-            _data->~T();
-        _read = _write = 0;
-    }
-
-    template< typename... Args >
-    void emplace_back( Args &&...args ) {
-        auto nwrite = _nxt( _write );
-        if ( nwrite == _read )
-            pop_front();
-        new ( _data + _write ) T( std::forward< Args >( args )... );
-        _write = nwrite;
-    }
-
-    void push_back( const T &val ) { emplace_back( val ); }
-    void push_back( T &&val ) { emplace_back( std::move( val ) ); }
+    void push_back( const T &val ) { _push_back( [&]( T *to ) { *to = val; } ); }
+    void push_back( T &&val ) { _push_back( [&]( T *to ) { *to = std::move( val ); } ); }
 
     void pop_back() {
         assert( _read != _write );
         _write = _nxt( _write, -1 );
-        _data[ _write ].~T();
     }
 
     void pop_front() {
         assert( _read != _write );
-        front().~T();
         _read = _nxt( _read );
     }
 
+    bool empty() const { return _read == _write; }
+
+    // oldest element
     T &front() {
-        assert( _read != _write );
-        return _data[ _read ];
+        assert( !empty() );
+        return _data.get()[ _read ];
     }
     const T &front() const {
-        assert( _read != _write );
-        return _data[ _read ];
+        assert( !empty() );
+        return _data.get()[ _read ];
+    }
+
+    // newest element
+    T &back() {
+        assert( !empty() );
+        return _data.get()[ _nxt( _write, -1 ) ];
+    }
+
+    const T &back() const {
+        assert( !empty() );
+        return _data.get()[ _nxt( _write, -1 ) ];
     }
 
     int size() const { return (_write + _size - _read) % _size; }
@@ -171,19 +156,28 @@ struct Buffer {
     const_reverse_iterator rend() const { return const_reverse_iterator( begin() ); }
     const_reverse_iterator crend() const { return rend(); }
 
-    T &operator[]( int ix ) { return _data[ _nxt( _read, ix ) ]; }
-    const T &operator[]( int ix ) const { return _data[ _nxt( _read, ix ) ]; }
+    T &operator[]( int ix ) { return _data.get()[ _nxt( _read, ix ) ]; }
+    const T &operator[]( int ix ) const { return _data.get()[ _nxt( _read, ix ) ]; }
 
   private:
     const int _size;
     int _read;
     int _write;
-    T *_data;
+    std::unique_ptr< T > _data;
 
     int _nxt( int x, int ix = 1 ) const {
-        // this is weirt, but we need to make sure result is positive even if
+        // this is weird, but we need to make sure result is positive even if
         // x + ix < 0
         return (((x + ix) % _size) + _size) % _size;
+    }
+
+    template< typename Push >
+    void _push_back( Push push ) {
+        auto nwrite = _nxt( _write );
+        if ( nwrite == _read )
+            pop_front();
+        push( _data.get() + _write );
+        _write = nwrite;
     }
 };
 
