@@ -67,7 +67,7 @@ struct SensorData {
     size_t size() const { return _data.size(); }
 
     void add( int position, int color ) {
-        _data.emplace_back( position, color );
+        _data.push_back( { position, color } );
     }
 
     int &col( size_t i ) { return _data[ i ].color; }
@@ -218,7 +218,7 @@ public:
     { }
 
     void save( SensorData &&data ) {
-        _dataBuf.emplace_back( std::move( data ) );
+        _dataBuf.push_back( std::move( data ) );
     }
 
     int analyze() {
