@@ -325,7 +325,7 @@ protected:
             data().col( i ) -= data().col( i-1 );
     }
 
-    SensorData &rawData() { return _dataBuf.front(); }
+    SensorData &rawData() { return _dataBuf.back(); }
     SensorData &data() { return _data; }
 
 private:
