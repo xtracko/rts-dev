@@ -84,11 +84,14 @@ public:
 
         median_blur(swipe);
         gradient(swipe);
+        _history.push_back( swipe );
 
+        /*
         std::cout << "Processed Value - Position: " << std::endl;
         for (const auto& i : swipe) {
             std::cout << "(" << i.val << ")";
         }
+        */
         std::cout << std::endl << std::endl;
 
         int min = 0, max = 0, minix = -1, maxix = -1;
@@ -138,7 +141,7 @@ protected:
         auto it2 = _last_width.begin(),
              it1 = it2++;
         for ( ; it2 != _last_width.end(); ++it1, ++it2 )
-            if ( *it1 * 1.1 >= *it2 )
+            if ( *it1 * 1.2 >= *it2 )
                 return false;
         return true;
     }
@@ -168,7 +171,7 @@ protected:
 private:
     std::vector<int>    _temp;
     PID                 _linePid = PID( 0.5, 10, 15, 100, 0 );
-    Buffer< int >       _last_width = { 4 };
+    Buffer< int >       _last_width = { 3 };
     Buffer< SwipeData > _history = { HISTORY_SIZE };
 };
 
