@@ -74,7 +74,7 @@ struct Buffer {
     }
 
     Buffer( Buffer &&o ) :
-        _size( o._size ), _read( o._read ), _write( o._write ), _data( o.data )
+        _size( o._size ), _read( o._read ), _write( o._write ), _data( o._data.release() )
     { // only operation alloved on o after this ctor is called is dtor
         o._data = nullptr;
     }

@@ -69,7 +69,7 @@ struct PID {
 
 struct CrossroadAnalyzer {
 
-    CrossroadAnalyzer() : data( 8 ) { }
+    CrossroadAnalyzer() : data( HISTORY_SIZE ) { }
 
     void run() {
         while ( !killFlag ) {
@@ -115,7 +115,18 @@ protected:
 class SwipeAnalyzer {
     static constexpr int blur_radius = 2;
 public:
+
+    SwipeAnalyzer( CrossroadAnalyzer &crossroad ) : _crossroad( &crossroad ) { }
+
     int process(SwipeData& swipe) {
+
+        auto cross = _crossroad->result.tryCopyOut();
+        if ( cross.first ) { // results are valid
+            // do crossroad
+            //
+            return 0;
+        }
+
         // discard unusable data
         if (swipe.size() < 2)
             return 0;
@@ -165,6 +176,7 @@ public:
         if ( is_wider( std::abs( maxpos - minpos ) ) ) {
             // dispatch a new job for crosroad analysis
             std::cout << "widening" << std::endl;
+            _crossroad->data.assign( _history );
         }
 
         int blackCenter = (minpos + maxpos) / 2;
@@ -219,6 +231,7 @@ private:
     PID                 _linePid = PID( 0.5, 10, 15, 100, 0 );
     Buffer< int >       _last_width = { 3 };
     Buffer< SwipeData > _history = { HISTORY_SIZE };
+    CrossroadAnalyzer  *_crossroad = nullptr;
 };
 
 
@@ -413,7 +426,8 @@ protected:
 
 private:
     SwipeData     _swipe;
-    SwipeAnalyzer _analyzer;
+    CrossroadAnalyzer _crossroad;
+    SwipeAnalyzer _analyzer = { _crossroad };
 
     SensorControl _sensors;
     DriveControl  _drives;

@@ -32,13 +32,17 @@ struct GuardedVar {
     // wait for value to be unguarded and assign it
     void assign( T &val ) {
         auto g = protect();
-        _assign( val );
+        std::swap( this->value, val );
+        ready = true;
+        cond.notify_one();
     }
 
-    // a version which accepts rvalues
+    // wait for value to be unguarded and assign it
     void assign( T &&val ) {
         auto g = protect();
-        _assign( val );
+        this->value = std::move( val );
+        ready = true;
+        cond.notify_one();
     }
 
     // waits untill value is assigned and then runs callback which should accept
@@ -81,12 +85,6 @@ struct GuardedVar {
 
     template< typename... Args >
     Guard protect( Args... args ) { return Guard( mutex, args... ); }
-
-    void _assign( T &val ) {
-        this->value = val;
-        ready = true;
-        cond.notify_one();
-    }
 };
 
 } // namespace job
