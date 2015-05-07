@@ -9,6 +9,8 @@
 #include <thread>
 #include <chrono>
 #include <cassert>
+#include "job.h"
+#include "buffer.h"
 
 
 using namespace ev3dev;
@@ -133,8 +135,8 @@ protected:
     }
 
     void gradient(SwipeData& swipe) {
-        for (auto it = swipe.begin() + 1; it != swipe.end(); ++it)
-            it->val -= (it - 1)->val;
+        for (auto it = swipe.begin(); it != swipe.end() - 1; ++it)
+            it->val -= (it + 1)->val;
     }
 
     void median_blur(SwipeData& swipe) {
@@ -279,6 +281,28 @@ public:
         _motor_L.set_pulses_per_second_sp( speed - i );
         _motor_R.set_pulses_per_second_sp( speed + i );
     }
+
+    void turn(bool left) {           // todo: just a prototype
+        stop();
+
+        _motor_L.set_run_mode( motor::run_mode_position );
+        _motor_R.set_run_mode( motor::run_mode_position );
+
+        _motor_L.set_pulses_per_second_sp( speed );
+        _motor_R.set_pulses_per_second_sp( speed );
+
+        _motor_L.set_position_mode( motor::position_mode_relative );
+        _motor_R.set_position_mode( motor::position_mode_relative );
+
+        const int position_sp = 360;
+
+        _motor_L.set_position_sp( left ? position_sp : -position_sp );
+        _motor_R.set_position_sp( left ? -position_sp : position_sp );
+
+        _motor_L.start();
+        _motor_R.start();
+    }
+
 protected:
     void init_modes() {
         _motor_L.reset();
