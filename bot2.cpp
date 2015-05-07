@@ -73,11 +73,11 @@ struct CrossroadAnalyzer {
 
     void run() {
         while ( !killFlag ) {
-            data.waitAndReadOnce( [&]( Buffer< SensorData > &sensorData ) { process( sensorData ); } );
+            data.waitAndReadOnce( [&]( Buffer< SwipeData > &sensorData ) { process( sensorData ); } );
         }
     }
 
-    job::GuardedVar< SwipeData > data;
+    job::GuardedVar< Buffer< SwipeData > > data;
     job::GuardedVar< int > result; // or watever data type is needed here
 
 protected:
@@ -87,7 +87,7 @@ protected:
         int whats_on_line[8] = { 0 };
 
         int index=0;
-        for ( const SwipeData &x : reverseRange( sensorData ) ) { // iterate from oldest to data()
+        for ( const SwipeData &x : sensorData ) { // iterate from oldest to data()
             whats_on_line[index] = whats_on_swipe(x);
             index++;
         }
