@@ -116,19 +116,98 @@ protected:
 
 };
 
+class DriveControl {
+    static constexpr const int speed = 80;
+public:
+    bool check() {
+        return _motor_L.connected() && _motor_R.connected();
+    }
+
+    void init() {
+        init_modes();
+    }
+
+    void stop() {
+        _motor_L.stop();
+        _motor_R.stop();
+    }
+
+    void forward() {
+        _motor_L.set_run_mode( motor::run_mode_forever );
+        _motor_R.set_run_mode( motor::run_mode_forever );
+
+        _motor_L.start();
+        _motor_R.start();
+    }
+
+    void adjust( int i ) {
+        _motor_L.set_pulses_per_second_sp( speed - i );
+        _motor_R.set_pulses_per_second_sp( speed + i );
+    }
+
+    void turn(bool left) {           // todo: just a prototype
+        stop();
+
+        _motor_L.set_run_mode( motor::run_mode_position );
+        _motor_R.set_run_mode( motor::run_mode_position );
+
+        _motor_L.set_pulses_per_second_sp( speed );
+        _motor_R.set_pulses_per_second_sp( speed );
+
+        _motor_L.set_position_mode( motor::position_mode_relative );
+        _motor_R.set_position_mode( motor::position_mode_relative );
+
+        const int position_sp = 360;
+
+        _motor_L.set_position_sp( left ? position_sp : -position_sp );
+        _motor_R.set_position_sp( left ? -position_sp : position_sp );
+
+        _motor_L.start();
+        _motor_R.start();
+    }
+
+    int position() {
+        return (_motor_R.position() + _motor_L.position()) / 2;
+    }
+
+protected:
+    void init_modes() {
+        _motor_L.reset();
+        _motor_R.reset();
+
+        _motor_L.set_stop_mode( motor::stop_mode_hold );
+        _motor_R.set_stop_mode( motor::stop_mode_hold );
+
+        _motor_L.set_regulation_mode( motor::mode_on );
+        _motor_R.set_regulation_mode( motor::mode_on );
+
+        _motor_L.set_polarity_mode( dc_motor::polarity_inverted );
+        _motor_R.set_polarity_mode( dc_motor::polarity_inverted );
+
+        _motor_L.set_pulses_per_second_sp( speed );
+        _motor_R.set_pulses_per_second_sp( speed );
+    }
+private:
+    large_motor  _motor_L = large_motor( OUTPUT_A );
+    large_motor  _motor_R = large_motor( OUTPUT_D );
+};
+
 
 class SwipeAnalyzer {
     static constexpr int blur_radius = 2;
 public:
 
-    SwipeAnalyzer( CrossroadAnalyzer &crossroad ) : _crossroad( &crossroad ) { }
+    SwipeAnalyzer( CrossroadAnalyzer &crossroad, DriveControl &drives  ) :
+        _crossroad( &crossroad ), _drives( &drives )
+    { }
 
-    int process(SwipeData& swipe) {
+    int process( SwipeData& swipe ) {
 
         auto cross = _crossroad->result.tryCopyOut();
         if ( cross.first ) { // results are valid
             // do crossroad
             //
+            _oldpos = _drives->position();
             return 0;
         }
 
@@ -180,7 +259,10 @@ public:
 
         if ( is_wider( std::abs( maxpos - minpos ) ) ) {
             // dispatch a new job for crosroad analysis
-            std::cout << "widening" << std::endl;
+            int position = _drives->position();
+            std::cout << "widening, distance = " << _oldpos - position << std::endl;
+            int dist = (_oldpos - position);
+            _history.second = dist;
             _crossroad->data.assign( _history );
         }
 
@@ -236,7 +318,9 @@ private:
     PID                 _linePid = PID( 0.5, 10, 15, 100, 0 );
     Buffer< int >       _last_width = { 3 };
     CrossroadAnalyzer  *_crossroad = nullptr;
+    DriveControl       *_drives = nullptr;
     std::pair< Buffer< SwipeData >, int > _history = { { HISTORY_SIZE }, 0 };
+    int _oldpos = 0;
 };
 
 
@@ -330,78 +414,6 @@ private:
     medium_motor _motor = medium_motor( OUTPUT_AUTO );
 };
 
-class DriveControl {
-    static constexpr const int speed = 80;
-public:
-    bool check() {
-        return _motor_L.connected() && _motor_R.connected();
-    }
-
-    void init() {
-        init_modes();
-    }
-
-    void stop() {
-        _motor_L.stop();
-        _motor_R.stop();
-    }
-
-    void forward() {
-        _motor_L.set_run_mode( motor::run_mode_forever );
-        _motor_R.set_run_mode( motor::run_mode_forever );
-
-        _motor_L.start();
-        _motor_R.start();
-    }
-
-    void adjust( int i ) {
-        _motor_L.set_pulses_per_second_sp( speed - i );
-        _motor_R.set_pulses_per_second_sp( speed + i );
-    }
-
-    void turn(bool left) {           // todo: just a prototype
-        stop();
-
-        _motor_L.set_run_mode( motor::run_mode_position );
-        _motor_R.set_run_mode( motor::run_mode_position );
-
-        _motor_L.set_pulses_per_second_sp( speed );
-        _motor_R.set_pulses_per_second_sp( speed );
-
-        _motor_L.set_position_mode( motor::position_mode_relative );
-        _motor_R.set_position_mode( motor::position_mode_relative );
-
-        const int position_sp = 360;
-
-        _motor_L.set_position_sp( left ? position_sp : -position_sp );
-        _motor_R.set_position_sp( left ? -position_sp : position_sp );
-
-        _motor_L.start();
-        _motor_R.start();
-    }
-
-protected:
-    void init_modes() {
-        _motor_L.reset();
-        _motor_R.reset();
-
-        _motor_L.set_stop_mode( motor::stop_mode_hold );
-        _motor_R.set_stop_mode( motor::stop_mode_hold );
-
-        _motor_L.set_regulation_mode( motor::mode_on );
-        _motor_R.set_regulation_mode( motor::mode_on );
-
-        _motor_L.set_polarity_mode( dc_motor::polarity_inverted );
-        _motor_R.set_polarity_mode( dc_motor::polarity_inverted );
-
-        _motor_L.set_pulses_per_second_sp( speed );
-        _motor_R.set_pulses_per_second_sp( speed );
-    }
-private:
-    large_motor  _motor_L = large_motor( OUTPUT_A );
-    large_motor  _motor_R = large_motor( OUTPUT_D );
-};
-
 class MainControl {
 public:
     bool check() { return _sensors.check() && _drives.check(); }
@@ -432,10 +444,11 @@ protected:
 private:
     SwipeData     _swipe;
     CrossroadAnalyzer _crossroad;
-    SwipeAnalyzer _analyzer = { _crossroad };
 
     SensorControl _sensors;
     DriveControl  _drives;
+
+    SwipeAnalyzer _analyzer = { _crossroad, _drives };
 };
 
 

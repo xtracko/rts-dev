@@ -95,11 +95,15 @@ struct Buffer {
         if ( &o == this )
             return *this;
 
+        swap( *this, o );
+        return *this;
+    }
+
+    void swap( Buffer &o ) {
         assert( _size == o._size );
         std::swap( _read, o._read );
         std::swap( _write, o._write );
         std::swap( _data, o._data );
-        return *this;
     }
 
     void push_back( const T &val ) { _push_back( [&]( T *to ) { *to = val; } ); }
@@ -180,5 +184,14 @@ struct Buffer {
         _write = nwrite;
     }
 };
+
+namespace std {
+
+template< typename T >
+void swap( Buffer< T > &a, Buffer< T > &b ) {
+    a.swap( b );
+}
+
+}
 
 #endif // _BUFFER_H
