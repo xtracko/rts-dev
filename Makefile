@@ -7,7 +7,7 @@ WFLAGS=-Wall -Wextra -Wold-style-cast
 DEPS=ev3dev.h
 OBJ=ev3dev.o
 
-all:  $(OBJ) bot
+all:  $(OBJ) bot2
 
 %.o: %.cpp $(DEPS)
 	$(CXX) -c -o $@ $< $(CXXFLAGS) $(WFLAGS)
@@ -23,6 +23,9 @@ line2: ${OBJ} line2.o
 
 bot: ${OBJ} bot.o
 	$(CXX) -o $@ $^ $(CXXFLAGS)
+	
+bot2: ${OBJ} bot2.o
+	$(CXX) -o $@ $^ $(CXXFLAGS)
 
 test : buffer-test
 	./buffer-test
@@ -36,4 +39,4 @@ job-test : job-test.cpp job.h
 .PHONY: all clean
 
 clean:
-	rm -f bot.o bot
+	rm -f bot2.o bot2
