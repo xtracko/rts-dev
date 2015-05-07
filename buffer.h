@@ -69,15 +69,13 @@ struct Buffer {
         _data( new T[ _size ] )
     { }
 
-    Buffer( const Buffer &o ) : Buffer( o._size ) {
+    Buffer( const Buffer &o ) : Buffer( o._size - 1 ) {
         std::copy( o.begin(), o.end(), std::back_inserter( *this ) );
     }
 
     Buffer( Buffer &&o ) :
         _size( o._size ), _read( o._read ), _write( o._write ), _data( o._data.release() )
-    { // only operation alloved on o after this ctor is called is dtor
-        o._data = nullptr;
-    }
+    { } // only operation alloved on o after this ctor is called is dtor
 
     Buffer &operator=( const Buffer &o ) {
         if ( &o == this )
@@ -167,7 +165,7 @@ struct Buffer {
     const int _size;
     int _read;
     int _write;
-    std::unique_ptr< T > _data;
+    std::unique_ptr< T[] > _data;
 
     int _nxt( int x, int ix = 1 ) const {
         // this is weird, but we need to make sure result is positive even if

@@ -90,7 +90,7 @@ protected:
     void process( const Buffer< SwipeData > &sensorData, int distance ) {
         std::cout << "crossroad analyser" << std::endl;
 
-        int whats_on_line[8] = { 0 };
+        int whats_on_line[ HISTORY_SIZE ] = { 0 };
 
         int index=0;
         for ( const SwipeData &x : sensorData ) { // iterate from oldest to data()
@@ -424,10 +424,15 @@ public:
 
         _drives.forward();
 
+        _crossroadThr = std::thread( [&] { _crossroad.run(); } );
+
         while ( !killFlag ) {
             update();
         }
 
+        _crossroad.data.cancelWaits();
+        _crossroad.result.cancelWaits();
+        _crossroadThr.join();
         _drives.stop();
     }
 
@@ -444,6 +449,7 @@ protected:
 private:
     SwipeData     _swipe;
     CrossroadAnalyzer _crossroad;
+    std::thread _crossroadThr;
 
     SensorControl _sensors;
     DriveControl  _drives;
