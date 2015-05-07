@@ -72,22 +72,6 @@ public:
             return 0;
 
         const int size = swipe.size();
-        int cval = 10, cix = -1;
-        for ( int i = 0; i < size; ++i ) {
-            int p = std::abs( swipe[i].pos );
-            if ( cval > p ) {
-                cval = p;
-                cix = i;
-            }
-        }
-
-        // check if we got some weird distribution
-        if ( cix < size / 4 || cix > (size / 4) * 3 ) {
-            std::cout << "center = (" << cval << "," << cix << ")" << std::endl;
-            return 0;
-        }
-
-        int cpos = swipe[ cix ].pos;
 
         /*
         std::cout << "Raw Value - Position: " << std::endl;
@@ -114,23 +98,24 @@ public:
             }
         }
 
-        if ( minix == -1 || maxix == -1 ) { // lost :-/, just continue staright
+        if ( minix == -1 && maxix == -1 ) { // lost :-/, just continue staright
+            std::cout << "lost" << std::endl;
             return 0;
         }
 
-        int minpos = swipe[ minix ].pos;
-        int maxpos = swipe[ maxix ].pos;
+        int minpos = minix == -1 ? swipe.front().pos : swipe[ minix ].pos;
+        int maxpos = maxix == -1 ? swipe.back().pos  : swipe[ maxix ].pos;
 
-        if (is_wider(maxpos - minpos)) {
+        if ( is_wider( std::abs( maxpos - minpos ) ) ) {
             // dispatch a new job for crosroad analysis
+            std::cout << "widening" << std::endl;
         }
 
         int blackCenter = (minpos + maxpos) / 2;
-        int diff = cpos - blackCenter;
 
-        std::cout << "bc = " << blackCenter << " (" << minpos << ", " << maxpos << ") cp = " << cpos << " diff = " << diff << std::endl;
+        std::cout << "bc = diff = " << blackCenter << " (" << minpos << ", " << maxpos << ")" << std::endl;
 
-        int c = _linePid.update( diff );
+        int c = _linePid.update( blackCenter );
         if ( c )
             std::cout << "c = " << c << std::endl;
         return c;
@@ -138,8 +123,9 @@ public:
 
 protected:
     bool is_wider(const int width) {
-        const bool wider = false;
+        bool wider = false;
 
+        std::cout << float( _last_width ) / float( width ) << std::endl;
         if (_last_width * 1.1 < width)
             wider = true;
         _last_width = width;
@@ -170,7 +156,7 @@ protected:
 
 private:
     std::vector<int> _temp;
-    PID              _linePid = PID( -1, 10, 15, 100, 0 );
+    PID              _linePid = PID( 0.5, 10, 15, 100, 0 );
     int              _last_width = 0;
 };
 
@@ -337,7 +323,8 @@ protected:
         _swipe.clear();
         _sensors.update(_swipe);
         if (!_swipe.empty()) {
-            _analyzer.process(_swipe);
+            int correction = _analyzer.process(_swipe);
+            _drives.adjust( correction );
         }
     }
 
