@@ -69,21 +69,27 @@ struct PID {
 
 struct CrossroadAnalyzer {
 
-    CrossroadAnalyzer() : data( HISTORY_SIZE ) { }
+    CrossroadAnalyzer() : data( std::pair< Buffer< SwipeData >, int >( { HISTORY_SIZE }, 0 ) ) { }
 
     void run() {
         while ( !killFlag ) {
-            data.waitAndReadOnce( [&]( Buffer< SwipeData > &sensorData ) { process( sensorData ); } );
+            data.waitAndReadOnce( [&]( std::pair< Buffer< SwipeData >, int > &sensorData ) { process( sensorData ); } );
         }
     }
 
-    job::GuardedVar< Buffer< SwipeData > > data;
+    job::GuardedVar< std::pair< Buffer< SwipeData >, int > > data;
     job::GuardedVar< int > result; // or watever data type is needed here
 
 protected:
     // this function will be called every time data are avalibale, it should
     // produce result into result variable, it shoud not access data variable
-    void process( const Buffer< SwipeData > &sensorData ) {
+    void process( const std::pair< Buffer< SwipeData >, int > &sensorData ) {
+        process( sensorData.first, sensorData.second );
+    }
+
+    void process( const Buffer< SwipeData > &sensorData, int distance ) {
+        std::cout << "crossroad analyser" << std::endl;
+
         int whats_on_line[8] = { 0 };
 
         int index=0;
@@ -91,8 +97,7 @@ protected:
             whats_on_line[index] = whats_on_swipe(x);
             index++;
         }
-
-        result.assign( 42 /* pass result back to main thread */ );
+        // result.assign( 42 /* pass result back to main thread */ );
     }
 
     /*
@@ -141,7 +146,7 @@ public:
 
         median_blur(swipe);
         gradient(swipe);
-        _history.push_back( swipe );
+        _history.first.push_back( swipe );
 
         /*
         std::cout << "Processed Value - Position: " << std::endl;
@@ -230,8 +235,8 @@ private:
     std::vector<int>    _temp;
     PID                 _linePid = PID( 0.5, 10, 15, 100, 0 );
     Buffer< int >       _last_width = { 3 };
-    Buffer< SwipeData > _history = { HISTORY_SIZE };
     CrossroadAnalyzer  *_crossroad = nullptr;
+    std::pair< Buffer< SwipeData >, int > _history = { { HISTORY_SIZE }, 0 };
 };
 
 
