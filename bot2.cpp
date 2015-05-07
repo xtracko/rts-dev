@@ -236,7 +236,7 @@ public:
 
         _data.push_back(point);
 
-        if (!update_motor()) {
+        if (update_motor()) {
             _data.swap(data);
             _data.clear();
         }
