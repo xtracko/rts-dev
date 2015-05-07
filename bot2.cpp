@@ -66,6 +66,52 @@ struct PID {
 };
 
 
+
+struct CrossroadAnalyzer {
+
+    CrossroadAnalyzer() : data( 8 ) { }
+
+    void run() {
+        while ( !killFlag ) {
+            data.waitAndReadOnce( [&]( Buffer< SensorData > &sensorData ) { process( sensorData ); } );
+        }
+    }
+
+    job::GuardedVar< SwipeData > data;
+    job::GuardedVar< int > result; // or watever data type is needed here
+
+protected:
+    // this function will be called every time data are avalibale, it should
+    // produce result into result variable, it shoud not access data variable
+    void process( const Buffer< SwipeData > &sensorData ) {
+        int whats_on_line[8] = { 0 };
+
+        int index=0;
+        for ( const SwipeData &x : reverseRange( sensorData ) ) { // iterate from oldest to data()
+            whats_on_line[index] = whats_on_swipe(x);
+            index++;
+        }
+
+        result.assign( 42 /* pass result back to main thread */ );
+    }
+
+    /*
+    0 - straight line
+    1 - long line
+    2 - 2 lines
+    3 - 3 lines
+    4 - line on the left
+    5 - line on the right
+    */
+    int whats_on_swipe(const SwipeData& swipe) const {
+
+
+        return 0;
+    }
+
+};
+
+
 class SwipeAnalyzer {
     static constexpr int blur_radius = 2;
 public:
