@@ -18,6 +18,7 @@ using namespace std::literals::chrono_literals;
 
 std::atomic< bool > killFlag;
 
+constexpr int HISTORY_SIZE = 16;
 
 
 struct DataPoint {
@@ -75,16 +76,20 @@ public:
 
         const int size = swipe.size();
 
-        /*
         std::cout << "Raw Value - Position: " << std::endl;
         for (const auto& i : swipe) {
-            std::cout << i.val << " " << i.pos << std::endl;
+            std::cout << (i.val ? '#' : '.');
         }
-        std::cout << std::endl << std::endl;
-        */
+        std::cout << std::endl;
 
         median_blur(swipe);
         gradient(swipe);
+
+        std::cout << "Processed Value - Position: " << std::endl;
+        for (const auto& i : swipe) {
+            std::cout << "(" << i.val << ")";
+        }
+        std::cout << std::endl << std::endl;
 
         int min = 0, max = 0, minix = -1, maxix = -1;
 
@@ -125,13 +130,17 @@ public:
 
 protected:
     bool is_wider(const int width) {
-        bool wider = false;
+        _last_width.push_back( width );
 
-        std::cout << float( _last_width ) / float( width ) << std::endl;
-        if (_last_width * 1.1 < width)
-            wider = true;
-        _last_width = width;
-        return wider;
+        for ( auto v : _last_width )
+            std::cout << float( v ) / float( width ) << " < ";
+        std::cout << std::endl;
+        auto it2 = _last_width.begin(),
+             it1 = it2++;
+        for ( ; it2 != _last_width.end(); ++it1, ++it2 )
+            if ( *it1 * 1.1 >= *it2 )
+                return false;
+        return true;
     }
 
     void gradient(SwipeData& swipe) {
@@ -157,9 +166,10 @@ protected:
     }
 
 private:
-    std::vector<int> _temp;
-    PID              _linePid = PID( 0.5, 10, 15, 100, 0 );
-    int              _last_width = 0;
+    std::vector<int>    _temp;
+    PID                 _linePid = PID( 0.5, 10, 15, 100, 0 );
+    Buffer< int >       _last_width = { 4 };
+    Buffer< SwipeData > _history = { HISTORY_SIZE };
 };
 
 
