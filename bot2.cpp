@@ -121,6 +121,10 @@ public:
         int minpos = swipe[ minix ].pos;
         int maxpos = swipe[ maxix ].pos;
 
+        if (is_wider(maxpos - minpos)) {
+            // dispatch a new job for crosroad analysis
+        }
+
         int blackCenter = (minpos + maxpos) / 2;
         int diff = cpos - blackCenter;
 
@@ -133,6 +137,15 @@ public:
     }
 
 protected:
+    bool is_wider(const int width) {
+        const bool wider = false;
+
+        if (_last_width * 1.1 < width)
+            wider = true;
+        _last_width = width;
+        return wider;
+    }
+
     void gradient(SwipeData& swipe) {
         for (auto it = swipe.begin() + 1; it != swipe.end(); ++it)
             it->val -= (it - 1)->val;
@@ -158,6 +171,7 @@ protected:
 private:
     std::vector<int> _temp;
     PID              _linePid = PID( -1, 10, 15, 100, 0 );
+    int              _last_width = 0;
 };
 
 
