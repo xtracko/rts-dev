@@ -286,7 +286,7 @@ protected:
         auto it2 = _last_width.begin(),
              it1 = it2++;
         for ( ; it2 != _last_width.end(); ++it1, ++it2 )
-            if ( *it1 * 1.2 >= *it2 )
+            if ( *it1 * 1.1 >= *it2 )
                 return false;
         return true;
     }
