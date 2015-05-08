@@ -119,6 +119,10 @@ struct Buffer {
 
     bool empty() const { return _read == _write; }
 
+    void clear() {
+        _read = _write = 0;
+    }
+
     // oldest element
     T &front() {
         assert( !empty() );
