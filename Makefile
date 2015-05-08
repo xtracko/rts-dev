@@ -36,6 +36,12 @@ buffer-test : buffer-test.cpp buffer.h
 job-test : job-test.cpp job.h
 	$(CXX) -o $@ $< $(CXXFLAGS)
 
+archive :
+	mkdir -p _sources
+	cp bot2.cpp README.md Makefile buffer.h job.h ev3dev.cpp ev3dev.h _sources
+	zip -r sources.zip _sources
+
+
 .PHONY: all clean
 
 clean:
