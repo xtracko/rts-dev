@@ -58,6 +58,8 @@ prototypování implementace, jeho kompilace na na EV3 je velice pomalá.
 - Vývoje neustále komplikuje to, že EV3 se neumí napájet z USB.
 
 
+## How to get it work
+
 To connect to device using ssh on linux:
 ```
 ip addr add 10.42.0.1/24 dev <dev_name>
