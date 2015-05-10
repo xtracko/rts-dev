@@ -11,6 +11,7 @@
 #include <cassert>
 #include "job.h"
 #include "buffer.h"
+#include "navigator.h"
 
 
 using namespace ev3dev;
@@ -18,7 +19,7 @@ using namespace std::literals::chrono_literals;
 
 std::atomic< bool > killFlag;
 
-constexpr int HISTORY_SIZE = 16;
+constexpr int HISTORY_SIZE = 9;
 
 
 struct DataPoint {
@@ -69,7 +70,11 @@ struct PID {
 
 struct CrossroadAnalyzer {
 
-    CrossroadAnalyzer() : data( std::pair< Buffer< SwipeData >, int >( { HISTORY_SIZE }, 0 ) ) { }
+    CrossroadAnalyzer() :
+        data( std::pair< Buffer< SwipeData >, int >( { HISTORY_SIZE }, 0 ) )
+    {
+        _navigator.initialize();
+    }
 
     void run() {
         while ( !killFlag ) {
@@ -83,36 +88,74 @@ struct CrossroadAnalyzer {
 protected:
     // this function will be called every time data are avalibale, it should
     // produce result into result variable, it shoud not access data variable
-    void process( const std::pair< Buffer< SwipeData >, int > &sensorData ) {
+    void process( std::pair< Buffer< SwipeData >, int > &sensorData ) {
         process( sensorData.first, sensorData.second );
+
+        sensorData.first.clear();
     }
 
-    void process( const Buffer< SwipeData > &sensorData, int distance ) {
+    void process( Buffer< SwipeData > &sensorData, int distance ) {
         std::cout << "crossroad analyser" << std::endl;
 
-        int whats_on_line[ HISTORY_SIZE ] = { 0 };
+        int low_last = -1000;
+        int high_last = 1000;
+
+        bool left = false;
+        bool right = false;
 
         int index=0;
-        for ( const SwipeData &x : sensorData ) { // iterate from oldest to data()
-            whats_on_line[index] = whats_on_swipe(x);
+        for ( const SwipeData &swipe : sensorData ) { // iterate from oldest to data()
+            int low, high = 0;
+
+            for (auto i = swipe.cbegin(); i != swipe.cend(); ++i) {
+                if ((index % 2) ? (i->val > 0) : (i->val < 0)) {
+                    high = i->pos;
+                } else if ((index % 2) ? (i->val < 0) : (i->val > 0)) {
+                    low = i->pos;
+                }
+            }
+
+            int diff_low = std::abs(low_last - low);
+            int diff_high = std::abs(high_last - high);
+
+            int width = std::abs(low - high);
+            int last_width = std::abs(low_last - high_last);
+
+            if (diff_high > 10 && width > last_width * 1.1)
+                left = true;
+            if (diff_low > 10 && width > last_width * 1.1)
+                right = true;
+
+            //std::cout << "path(" << low << " " << high << ") diff(" << diff_low << " " << diff_high << ") wider(" << left << " " << right << ")" << std::endl;
+
+            low_last = low;
+            high_last = high;
+
             index++;
         }
-        // result.assign( 42 /* pass result back to main thread */ );
+
+        int direction = 0;
+
+        std::cout << "turn(" << left << " " << right << ") distance(" << distance << ")" << std::endl;
+
+        if (left && !right) {
+            _navigator.turnMet(-1, distance);
+
+            direction = -1;
+        } else if (!left && right) {
+            _navigator.turnMet(1, distance);
+
+            direction = 1;
+        } else if (left && right) {
+            direction = _navigator.crossroadsMet(distance);
+        } else {
+            direction = 0;
+        }
+
+        result.assign( direction );
     }
-
-    /*
-    0 - straight line
-    1 - long line
-    2 - 2 lines
-    3 - 3 lines
-    4 - line on the left
-    5 - line on the right
-    */
-    int whats_on_swipe(const SwipeData& swipe) const {
-
-
-        return 0;
-    }
+private:
+    Navigator _navigator;
 
 };
 
@@ -145,25 +188,60 @@ public:
         _motor_R.set_pulses_per_second_sp( speed + i );
     }
 
-    void turn(bool left) {           // todo: just a prototype
+    void turn(const int direction) {
+        std::cout << "turn: " << direction << std::endl;
+
         stop();
 
         _motor_L.set_run_mode( motor::run_mode_position );
         _motor_R.set_run_mode( motor::run_mode_position );
 
-        _motor_L.set_pulses_per_second_sp( speed );
-        _motor_R.set_pulses_per_second_sp( speed );
+        _motor_L.set_pulses_per_second_sp( 400 );
+        _motor_R.set_pulses_per_second_sp( 400 );
 
         _motor_L.set_position_mode( motor::position_mode_relative );
         _motor_R.set_position_mode( motor::position_mode_relative );
 
-        const int position_sp = 360;
+        // reset position
+        _motor_L.set_position( 0 );
+        _motor_R.set_position( 0 );
 
-        _motor_L.set_position_sp( left ? position_sp : -position_sp );
-        _motor_R.set_position_sp( left ? -position_sp : position_sp );
+        // go forward by 320
+        _motor_L.set_position_sp( 340 );
+        _motor_R.set_position_sp( 340 );
 
         _motor_L.start();
         _motor_R.start();
+
+        // wait till performed
+        while (_motor_L.running() || _motor_R.running());
+
+        // turn
+        if (direction != 0) {
+            const int position_sp = 330;
+
+            std::cout << "turning" << std::endl;
+
+            _motor_L.set_position_sp( direction == -1 ? position_sp : -position_sp );
+            _motor_R.set_position_sp( direction == -1 ? -position_sp : position_sp );
+
+            _motor_L.start();
+            _motor_R.start();
+
+            // wait till performed
+            while (_motor_L.running() || _motor_R.running());
+        }
+
+
+        // reset position
+        _motor_L.set_position( 0 );
+        _motor_R.set_position( 0 );
+
+        // set the default speed
+        _motor_L.set_pulses_per_second_sp( speed );
+        _motor_R.set_pulses_per_second_sp( speed );
+
+        forward();
     }
 
     int position() {
@@ -206,7 +284,13 @@ public:
         auto cross = _crossroad->result.tryCopyOut();
         if ( cross.first ) { // results are valid
             // do crossroad
-            //
+
+            // exit if in target
+            if (cross.second == -2)
+                exit(0);
+
+            _drives->turn(cross.second);
+
             _oldpos = _drives->position();
             return 0;
         }
@@ -216,13 +300,13 @@ public:
             return 0;
 
         const int size = swipe.size();
-
+/*
         std::cout << "Raw Value - Position: " << std::endl;
         for (const auto& i : swipe) {
             std::cout << (i.val ? '#' : '.');
         }
         std::cout << std::endl;
-
+*/
         median_blur(swipe);
         gradient(swipe);
         _history.first.push_back( swipe );
@@ -232,8 +316,8 @@ public:
         for (const auto& i : swipe) {
             std::cout << "(" << i.val << ")";
         }
-        */
         std::cout << std::endl << std::endl;
+        */
 
         int min = 0, max = 0, minix = -1, maxix = -1;
 
@@ -250,29 +334,40 @@ public:
         }
 
         if ( minix == -1 && maxix == -1 ) { // lost :-/, just continue staright
-            std::cout << "lost" << std::endl;
+//            std::cout << "lost" << std::endl;
             return 0;
         }
 
         int minpos = minix == -1 ? swipe.front().pos : swipe[ minix ].pos;
         int maxpos = maxix == -1 ? swipe.back().pos  : swipe[ maxix ].pos;
 
-        if ( is_wider( std::abs( maxpos - minpos ) ) ) {
+        int width = std::abs( maxpos - minpos );
+
+        if ( !_was_wider ) {
+            _was_wider = is_wider( width );
+        }
+
+        if ( _was_wider && is_narrower( width ) ) {
+            _was_wider = false;
             // dispatch a new job for crosroad analysis
             int position = _drives->position();
-            std::cout << "widening, distance = " << _oldpos - position << std::endl;
+//            std::cout << "widening, distance = " << _oldpos - position << std::endl;
             int dist = (_oldpos - position);
             _history.second = dist;
             _crossroad->data.assign( _history );
+            _last_width.clear();
         }
+
+        if (_was_wider)
+            return 0;
 
         int blackCenter = (minpos + maxpos) / 2;
 
-        std::cout << "bc = diff = " << blackCenter << " (" << minpos << ", " << maxpos << ")" << std::endl;
+//        std::cout << "bc = diff = " << blackCenter << " (" << minpos << ", " << maxpos << ")" << std::endl;
 
         int c = _linePid.update( blackCenter );
-        if ( c )
-            std::cout << "c = " << c << std::endl;
+//        if ( c )
+//            std::cout << "c = " << c << std::endl;
         return c;
     }
 
@@ -280,13 +375,30 @@ protected:
     bool is_wider(const int width) {
         _last_width.push_back( width );
 
-        for ( auto v : _last_width )
-            std::cout << float( v ) / float( width ) << " < ";
-        std::cout << std::endl;
+//        for ( auto v : _last_width )
+//            std::cout << float( v ) / float( width ) << " < ";
+//        std::cout << std::endl;
+        if (_last_width.size() != 3)
+            return false;
+
         auto it2 = _last_width.begin(),
              it1 = it2++;
         for ( ; it2 != _last_width.end(); ++it1, ++it2 )
             if ( *it1 * 1.1 >= *it2 )
+                return false;
+        return true;
+    }
+
+    bool is_narrower(const int width) {
+        _last_width.push_back( width );
+
+        if (_last_width.size() != 3)
+            return false;
+
+        auto it2 = _last_width.begin(),
+             it1 = it2++;
+        for ( ; it2 != _last_width.end(); ++it1, ++it2 )
+            if ( *it1 * 1.1 <= *it2 )
                 return false;
         return true;
     }
@@ -321,6 +433,7 @@ private:
     DriveControl       *_drives = nullptr;
     std::pair< Buffer< SwipeData >, int > _history = { { HISTORY_SIZE }, 0 };
     int _oldpos = 0;
+    bool _was_wider = false;
 };
 
 
