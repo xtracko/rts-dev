@@ -206,9 +206,9 @@ public:
         _motor_L.set_position( 0 );
         _motor_R.set_position( 0 );
 
-        // go forward by 320
-        _motor_L.set_position_sp( 340 );
-        _motor_R.set_position_sp( 340 );
+        // go forward by 350
+        _motor_L.set_position_sp( 350 );
+        _motor_R.set_position_sp( 350 );
 
         _motor_L.start();
         _motor_R.start();
@@ -218,7 +218,7 @@ public:
 
         // turn
         if (direction != 0) {
-            const int position_sp = 330;
+            const int position_sp = 340;
 
             std::cout << "turning" << std::endl;
 
