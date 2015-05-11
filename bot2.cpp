@@ -353,7 +353,7 @@ public:
             int position = _drives->position();
 //            std::cout << "widening, distance = " << _oldpos - position << std::endl;
             int dist = (_oldpos - position);
-            _history.second = dist;
+            _history.second = dist / 320;
             _crossroad->data.assign( _history );
             _last_width.clear();
         }
