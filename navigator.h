@@ -131,7 +131,7 @@ public:
         int turn = ((newDirection + (direction * 3) + 1) & 3) - 1;
         sprintf(buffer, "crossroadsMet() returns %d\n\n", turn);
         Log(buffer);
-
+        direction = newDirection;
         return turn;
     }
 
