@@ -207,8 +207,8 @@ public:
         _motor_R.set_position( 0 );
 
         // go forward by 350
-        _motor_L.set_position_sp( 350 );
-        _motor_R.set_position_sp( 350 );
+        _motor_L.set_position_sp( 340 );
+        _motor_R.set_position_sp( 340 );
 
         _motor_L.start();
         _motor_R.start();
@@ -218,7 +218,7 @@ public:
 
         // turn
         if (direction != 0) {
-            const int position_sp = 340;
+            const int position_sp = 335;
 
             std::cout << "turning" << std::endl;
 
@@ -353,7 +353,7 @@ public:
             int position = _drives->position();
 //            std::cout << "widening, distance = " << _oldpos - position << std::endl;
             int dist = (_oldpos - position);
-            _history.second = dist / 320;
+            _history.second = std::ceil(float(dist) / float(320));
             _crossroad->data.assign( _history );
             _last_width.clear();
         }
